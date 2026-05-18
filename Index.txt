@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<!--
+  OFIJU Agenda
+  Autor y titular: Agustin Andres Arranz.
+  Copyright (c) 2026 Agustin Andres Arranz. Todos los derechos reservados.
+  Uso interno autorizado provisoriamente para OFIJU Penal Oran, sin cesion de derechos.
+-->
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OFIJU Agenda</title>
+<?!= include('CSS'); ?>
+</head>
+<body>
+<div id="access-gate" class="access-gate">
+  <div class="access-card">
+    <div class="access-kicker">OFIJU Agenda</div>
+    <h1>Verificando acceso</h1>
+    <p>Estamos identificando la cuenta Google y consultando permisos de usuario.</p>
+    <div class="access-user">
+      <span>Estado</span>
+      <strong>Verificando sesion...</strong>
+    </div>
+  </div>
+</div>
+<div class="app">
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark" id="ofiju-logo-mark" title="OFIJU">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3v18"/>
+        <path d="M5 6h14"/>
+        <path d="M6 6l-3 6h6L6 6z"/>
+        <path d="M18 6l-3 6h6l-3-6z"/>
+        <path d="M8 21h8"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <div class="nombre">OFIJU Agenda</div>
+      <div class="sub">OFIJU PENAL ORAN</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-sec">Principal</div>
+    <button class="nb active" title="Agenda" onclick="navegar('agenda',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M7 2v4M13 2v4M3 9h14"/></svg>Agenda
+    </button>
+    <button class="nb" title="Oralidad" onclick="navegar('oralidad',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h12M4 10h8M4 15h6" stroke-linecap="round"/></svg>Oralidad
+      <span class="nbadge" id="badge-o" style="display:none">0</span>
+    </button>
+    <button class="nb" title="Debate" onclick="navegar('debate',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5h12M4 10h8M4 15h6" stroke-linecap="round"/></svg>Debate
+      <span class="nbadge" id="badge-d" style="display:none">0</span>
+    </button>
+    <button class="nb" title="Expedientes" onclick="navegar('expedientes',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3h10a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M7 7h6M7 11h6M7 15h4"/></svg>Expedientes
+    </button>
+    <div class="nav-sec">Herramientas</div>
+    <button class="nb" title="Simulador" onclick="navegar('simulador',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 3"/></svg>Simulador
+    </button>
+    <button class="nb" title="Busqueda" onclick="navegar('busqueda',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="5"/><path d="M14 14l3 3"/></svg>Busqueda
+    </button>
+    <div class="nav-sec">Gestion</div>
+    <button class="nb" title="Recepcion" onclick="navegar('recepcion',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12v12H4z"/><path d="M7 8h6M7 12h4" stroke-linecap="round"/></svg>Recepcion
+    </button>
+    <button class="nb" id="nav-revision" title="Revision" onclick="navegar('revision',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17h12" stroke-linecap="round"/></svg>Revision
+      <span class="nbadge" id="badge-r" style="display:none">0</span>
+    </button>
+    <button class="nb" title="Personas" onclick="navegar('personal',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="7" r="3"/><path d="M3 18c0-4 3-6 7-6s7 2 7 6"/></svg>Personas
+    </button>
+    <button class="nb" title="Estadisticas" onclick="navegar('stats',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17V10M8 17V7M13 17V3M18 17v-5" stroke-linecap="round"/></svg>Estadisticas
+    </button>
+    <button class="nb" id="nav-admin" title="Admin" onclick="navegar('admin',this)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3l6 3v4c0 4-2.5 6.5-6 8-3.5-1.5-6-4-6-8V6l6-3z"/><path d="M8 10l1.5 1.5L12.5 8"/></svg>Admin
+    </button>
+  </nav>
+  <div class="sf" id="sf-fecha"></div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="ptitle">Agenda</span>
+    <div class="tr">
+      <div class="ui-tools">
+        <button class="icon-btn" id="btn-sidebar-pin" title="Fijar menu lateral" aria-label="Fijar menu lateral" onclick="toggleSidebarPin()">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3l5 5-3 1.5-2.5 5L9 12 5 16l3.5-4-3-2.5 5-2.5L12 3z" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn theme-toggle" id="btn-theme-toggle" title="Tema visual" aria-label="Tema visual" onclick="toggleTemaUI()"></button>
+        <div class="notif-wrap">
+          <button class="icon-btn notif-btn" id="btn-notificaciones" title="Notificaciones" aria-label="Notificaciones" onclick="toggleNotificaciones(event)">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M15 8a5 5 0 10-10 0c0 5-2 6-2 6h14s-2-1-2-6"/><path d="M8 17a2 2 0 004 0"/></svg>
+            <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+          </button>
+          <div class="notif-panel" id="notif-panel" style="display:none"></div>
+        </div>
+      </div>
+      <span class="tfecha" id="tusuario"></span>
+      <span class="tfecha" id="tfecha"></span>
+      <button class="btn btn-p" id="btn-nueva-solicitud" onclick="abrirNuevaSolicitud()">+ Nueva solicitud</button>
+    </div>
+  </div>
+  <div class="page active" id="page-agenda"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-oralidad"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-debate"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-expedientes"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-simulador"></div>
+  <div class="page" id="page-busqueda"></div>
+  <div class="page" id="page-recepcion"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-revision"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-personal"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-stats"><div class="loading">Cargando...</div></div>
+  <div class="page" id="page-admin"><div class="loading">Cargando...</div></div>
+</div>
+</div>
+
+<!-- MODAL INGRESO FISICO -->
+<div id="modal-ingreso-fisico" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:230;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarIngresoFisico()">
+<div class="edit-modal" style="width:460px">
+  <button class="close-x" onclick="cerrarIngresoFisico()">x</button>
+  <h2>Registrar ingreso fisico</h2>
+  <input type="hidden" id="if-expte">
+  <div class="form-grid g1">
+    <div class="fg"><label>Expediente</label><input type="text" id="if-expte-visible" disabled></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fecha de ingreso</label><input type="date" id="if-fecha"></div>
+    <div class="fg"><label>Hora de ingreso</label><input type="time" id="if-hora"></div>
+  </div>
+  <div class="form-grid g1">
+    <div class="fg"><label>Observacion</label><textarea id="if-obs" rows="3" placeholder="Detalle opcional"></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" onclick="cerrarIngresoFisico()">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarIngresoFisicoUI()">Guardar ingreso</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL MOVIMIENTO EXPEDIENTE -->
+<div id="modal-movimiento-expediente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:232;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarMovimientoExpediente()">
+<div class="edit-modal" style="width:560px">
+  <button class="close-x" onclick="cerrarMovimientoExpediente()">x</button>
+  <h2>Registrar movimiento</h2>
+  <input type="hidden" id="mov-expte">
+  <div class="form-grid g1">
+    <div class="fg"><label>Expediente</label><input type="text" id="mov-expte-visible"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Tipo</label><select id="mov-tipo"><option>Ingreso fisico</option><option>Enviado a</option><option>En OFIJU</option></select></div>
+    <div class="fg"><label>Ubicacion / destino</label><select id="mov-ubicacion"><option>Recepcion</option><option>Juzgado</option><option>Agenda</option><option>Gestion</option><option>Asesoria</option><option>Defensoria</option><option>Mesa Pupilar</option><option>Archivo</option><option>Otro</option></select></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fecha</label><input type="date" id="mov-fecha"></div>
+    <div class="fg"><label>Hora</label><input type="time" id="mov-hora"></div>
+  </div>
+  <div class="form-grid g1">
+    <div class="fg"><label>Observacion</label><textarea id="mov-obs" rows="3" placeholder="Detalle opcional"></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" onclick="cerrarMovimientoExpediente()">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarMovimientoExpedienteUI()">Guardar movimiento</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL IMPUTADO EXPEDIENTE -->
+<div id="modal-imputado-expediente" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:235;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarImputadoExpediente()">
+<div class="edit-modal" style="width:520px">
+  <button class="close-x" onclick="cerrarImputadoExpediente()">x</button>
+  <h2>Agregar imputado</h2>
+  <input type="hidden" id="ie-expte">
+  <div class="form-grid g1">
+    <div class="fg"><label>Expediente</label><input type="text" id="ie-expte-visible" disabled></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Nombre y apellido *</label><input type="text" id="ie-nombre" placeholder="Apellido, Nombre"></div>
+    <div class="fg"><label>DNI</label><input type="text" id="ie-dni" placeholder="DNI"></div>
+  </div>
+  <div class="form-grid g1">
+    <div class="fg"><label>Observacion</label><textarea id="ie-obs" rows="3"></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" onclick="cerrarImputadoExpediente()">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarImputadoExpedienteUI()">Agregar imputado</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL NUEVA SOLICITUD -->
+<div id="modal-nueva" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarNueva()">
+<div class="edit-modal modal-solicitud">
+  <button class="close-x" onclick="cerrarNueva()">x</button>
+  <h2>Nueva solicitud de audiencia</h2>
+  <h3>Tipo de tramite</h3>
+  <div class="form-grid">
+    <div class="fg"><label>Tramite</label>
+      <select id="ns-tramite" onchange="cambiarTramiteNS()">
+        <option value="oralidad">Oralidad</option>
+        <option value="debate">Debate</option>
+      </select>
+    </div>
+    <div class="fg"><label>Tipo de audiencia</label><select id="ns-tipo-aud" onchange="actualizarSubtipoRppNS_()"></select></div>
+    <div class="fg" id="ns-subtipo-rpp-wrap" style="display:none"><label>Subtipo RPP</label><select id="ns-subtipo-rpp"><option value="">Sin subtipo</option><option value="ARRESTO DOMICILIARIO">Arresto domiciliario</option></select></div>
+  </div>
+  <h3>Expediente</h3>
+  <div class="form-grid">
+    <div class="fg"><label>N Expediente *</label><input type="text" id="ns-expte" placeholder="ej. 69207/24"></div>
+    <div class="fg"><label>Juzgado de origen</label><select id="ns-juzgado"></select></div>
+  </div>
+  <div class="form-grid g1">
+    <div class="fg"><label>Imputado/s *</label><input type="text" id="ns-imputado" placeholder="Apellido, Nombre"></div>
+  </div>
+  <div class="form-grid g1">
+    <div class="fg"><label>DNI imputado/s</label><input type="text" id="ns-dni-imputado" placeholder="DNI o varios separados por ;"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Ingreso OGA</label><input type="date" id="ns-ing-oga"></div>
+    <div class="fg" id="ns-ing-exp-fisico-wrap"><label>Ingreso expte fisico</label><input type="date" id="ns-ing-exp-fisico"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fiscal</label><select id="ns-fiscal"></select></div>
+    <div class="fg"><label>Gestor</label><select id="ns-gestor"></select></div>
+  </div>
+  <div class="form-grid" id="ns-debate-actores-wrap" style="display:none">
+    <div class="fg"><label>Juez</label><select id="ns-juez"></select></div>
+    <div class="fg"><label>Secretario</label><select id="ns-secretario"></select></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg" style="justify-content:flex-end;padding-top:20px">
+      <div class="chkrow"><input type="checkbox" id="ns-preso"><label for="ns-preso">Privado de Libertad</label></div>
+    </div>
+    <div class="fg"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" onclick="cerrarNueva()">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarNuevaSolicitud()">Guardar solicitud</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div id="modal-editar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarEditar()">
+<div class="edit-modal">
+  <button class="close-x" onclick="cerrarEditar()">x</button>
+  <h2 id="edit-titulo">Editar audiencia</h2>
+  <input type="hidden" id="edit-hoja">
+  <input type="hidden" id="edit-expte">
+  <input type="hidden" id="edit-modo">
+  <input type="hidden" id="edit-reserva-id">
+  <h3>Datos expediente</h3>
+  <div class="form-grid g1">
+    <div class="fg"><label>DNI imputado/s</label><input type="text" id="edit-dni-imputado" placeholder="DNI o varios separados por ;"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg" id="edit-ing-exp-fisico-box"><label>Ingreso expte fisico</label><input type="date" id="edit-ing-exp-fisico"></div>
+    <div class="fg" id="edit-fecha-limite-box"><label>Fecha limite</label><input type="date" id="edit-fecha-limite"></div>
+  </div>
+  <h3>Estado y resultado</h3>
+  <div class="form-grid">
+    <div class="fg"><label>Estado</label><select id="edit-estado"></select><div class="field-help">Agendar y cancelar son acciones separadas.</div></div>
+    <div class="fg"><label>Resultado</label><select id="edit-resultado"></select></div>
+  </div>
+  <h3>Fecha y lugar</h3>
+  <div class="form-grid g3">
+    <div class="fg"><label>Dia</label><input type="date" id="edit-dia" onchange="actualizarOpcionesActoresEdicion_()"></div>
+    <div class="fg"><label>Hora inicio</label><input type="time" id="edit-hora"></div>
+    <div class="fg"><label>Duracion (min)</label><input type="number" id="edit-dur" value="60"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Sala</label><select id="edit-sala"></select></div>
+    <div class="fg"></div>
+  </div>
+  <div class="asig-box" id="asig-or-wrap" style="display:none">
+    <div class="asig-head">
+      <div>
+        <strong>Sugerencia de agenda</strong>
+        <span id="asig-or-sub">Oralidad</span>
+      </div>
+      <button type="button" class="btn btn-sm btn-g" id="asig-or-btn" onclick="sugerirAsignacionOralidadUI()">Sugerir fecha y actores</button>
+    </div>
+    <div id="asig-or-result" class="asig-result"></div>
+  </div>
+  <h3>Actores</h3>
+  <div class="form-grid">
+    <div class="fg"><label>Juez</label><select id="edit-juez"></select></div>
+    <div class="fg"><label>Audiencista</label><select id="edit-audiencista"></select></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fiscal</label><select id="edit-fiscal"></select></div>
+    <div class="fg">
+      <label>Defensa</label>
+      <select id="edit-defensa" onchange="sincronizarLitiganteDesdeDefensa_()"></select>
+      <div class="litigante-box" id="edit-litigante-box">
+        <label>Defensa particular registrada</label>
+        <div class="litigante-row">
+          <select id="edit-litigante"></select>
+          <button type="button" class="btn btn-sm" onclick="aplicarLitiganteDefensa_()">Usar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Asesor / Querellante</label><select id="edit-asesor"></select></div>
+    <div class="fg"><label>Secretario</label><select id="edit-secretario"></select></div>
+  </div>
+  <h3>Observaciones</h3>
+  <div class="form-grid g1">
+    <div class="fg"><textarea id="edit-obs" rows="3"></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btn-danger" id="edit-eliminar-btn" onclick="eliminarExpediente()" style="margin-right:auto">Eliminar registro</button>
+    <button class="btn btn-danger btn-action" id="edit-cancelar-interv-btn" onclick="accionRapidaEditar('cancelar')">Cancelar intervencion</button>
+    <button class="btn btn-g btn-action btn-agendar" id="edit-agendar-btn" onclick="accionRapidaEditar('agendar')">Enviar a revision</button>
+    <button class="btn" onclick="cerrarEditar()">Cancelar</button>
+    <button class="btn btn-p" id="edit-guardar-btn" onclick="guardarEdicion()">Guardar cambios</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL BLOQUEO -->
+<div id="modal-bloqueo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarBloqueo()">
+<div class="edit-modal" style="width:420px">
+  <button class="close-x" onclick="cerrarBloqueo()">x</button>
+  <h2 id="bloqueo-titulo">Agregar bloqueo</h2>
+  <input type="hidden" id="bloqueo-nombre">
+  <div class="form-grid g1">
+    <div class="fg"><label>Motivo</label>
+      <select id="bloqueo-motivo">
+        <option>LICENCIA</option><option>VACACIONES</option><option>ENFERMEDAD</option>
+        <option>CAPACITACION</option><option>FERIA JUDICIAL</option><option>OTRO</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fecha inicio</label><input type="date" id="bloqueo-inicio" oninput="previewFinBloqueo()" onchange="previewFinBloqueo()"></div>
+    <div class="fg"><label>Duracion en dias</label><input type="number" id="bloqueo-dias" value="1" min="1" oninput="previewFinBloqueo()"></div>
+  </div>
+  <div id="bloqueo-fin-preview" style="font-size:12px;color:#4a3fb5;font-weight:500;padding:4px 0;margin-bottom:8px"></div>
+  <div class="mfoot">
+    <button class="btn" onclick="cerrarBloqueo()">Cancelar</button>
+    <button class="btn btn-p" onclick="guardarBloqueo()">Guardar bloqueo</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL NUEVA PERSONA -->
+<div id="modal-persona" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:220;align-items:center;justify-content:center" onclick="if(event.target===this)cerrarNuevaPersona()">
+<div class="edit-modal" style="width:560px">
+  <button class="close-x" onclick="cerrarNuevaPersona()">x</button>
+  <h2 id="persona-titulo">Agregar nueva persona</h2>
+  <input type="hidden" id="np-original">
+  <h3>Datos principales</h3>
+  <div class="form-grid">
+    <div class="fg"><label>Nombre *</label><input type="text" id="np-nombre" placeholder="Apellido, Nombre"></div>
+    <div class="fg"><label>Rol *</label><select id="np-rol"><option>JUEZ</option><option>FISCAL</option><option>DEFENSA</option><option>ABOGADO LITIGANTE</option><option>AUDIENCISTA</option><option>ASESOR</option><option>QUERELLANTE</option><option>SECRETARIO</option><option>GESTOR</option><option>OTRO</option></select></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Área</label><input type="text" id="np-area" placeholder="OFIJU, Fiscalía, Defensa, etc."></div>
+    <div class="fg"><label>A.K.A.</label><input type="text" id="np-aka" placeholder="Nombre corto / alias"></div>
+  </div>
+  <h3>Contacto</h3>
+  <div class="form-grid">
+    <div class="fg"><label>Teléfono</label><input type="text" id="np-telefono" placeholder="Ej. 387..."></div>
+    <div class="fg"><label>Email</label><input type="email" id="np-email" placeholder="correo@dominio.com"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><div class="chkrow"><input type="checkbox" id="np-activo" checked><label for="np-activo">Activo</label></div></div>
+    <div class="fg"><div class="chkrow"><input type="checkbox" id="np-notifica"><label for="np-notifica">Recibe notificaciones</label></div></div>
+  </div>
+  <h3>Disponibilidad y reemplazos</h3>
+  <div class="form-grid">
+    <div class="fg"><label>Max audiencias/dia</label><input type="number" id="np-max-dia" min="0" placeholder="Sin limite"></div>
+    <div class="fg"><div class="chkrow"><input type="checkbox" id="np-vacante"><label for="np-vacante">Es vacante</label></div></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Fecha alta sorteo</label><input type="date" id="np-fecha-alta-sorteo"></div>
+    <div class="fg"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Reemplazante</label><input type="text" id="np-reemplazante" placeholder="Nombre del reemplazante"></div>
+    <div class="fg"></div>
+  </div>
+  <div class="form-grid">
+    <div class="fg"><label>Inicio reemplazo</label><input type="date" id="np-inicio-reemplazo"></div>
+    <div class="fg"><label>Fin reemplazo</label><input type="date" id="np-fin-reemplazo"></div>
+  </div>
+  <div class="form-grid g1">
+    <div class="fg"><label>Observaciones de contacto</label><textarea id="np-obs" rows="3"></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" onclick="cerrarNuevaPersona()">Cancelar</button>
+    <button class="btn btn-p" id="persona-guardar-btn" onclick="guardarNuevaPersona()">Guardar persona</button>
+  </div>
+</div>
+</div>
+
+<!-- PANEL PERSONAL EXPANDIDO -->
+<div id="personal-overlay" style="display:none" class="personal-panel-overlay" onclick="if(event.target===this)cerrarPanelPersonal()">
+<div class="personal-panel-box">
+  <h3>Disponibilidad <button onclick="cerrarPanelPersonal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:#888">x</button></h3>
+  <div class="fg" style="margin-bottom:10px">
+    <label style="font-size:11px;color:#666">Consultar fecha</label>
+    <input type="date" id="panel-fecha" onchange="renderPanelPersonalContenido()">
+  </div>
+  <div id="panel-personal-lista"></div>
+</div>
+</div>
+
+<?!= include('JS'); ?>
+<div id="toast" class="toast"></div>
+</body>
+</html>

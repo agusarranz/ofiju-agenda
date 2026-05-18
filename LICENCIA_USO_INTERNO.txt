@@ -1,0 +1,22 @@
+LICENCIA DE USO INTERNO - OFIJU AGENDA
+
+Autor y titular: Agustin Andres Arranz.
+Copyright (c) 2026 Agustin Andres Arranz. Todos los derechos reservados.
+
+1. Objeto
+Esta licencia regula el uso interno de la aplicacion OFIJU Agenda, incluyendo su codigo fuente, interfaz, estructura funcional, documentacion y adaptaciones.
+
+2. Uso autorizado
+Agustin Andres Arranz autoriza provisoriamente el uso interno de OFIJU Agenda en OFIJU Penal Oran para tareas de gestion operativa de audiencias, expedientes, revision, recepcion y seguimiento interno.
+
+3. Reserva de derechos
+El autor se reserva todos los derechos sobre OFIJU Agenda. Esta autorizacion no transfiere titularidad, no cede derechos patrimoniales y no autoriza distribucion, publicacion, sublicencia, venta, explotacion comercial, copia fuera del ambito autorizado ni modificacion por terceros sin consentimiento expreso del autor.
+
+4. Ambito
+La autorizacion se limita a OFIJU Penal Oran. Cualquier uso por otros organismos, dependencias, personas o terceros requiere autorizacion previa y por escrito de Agustin Andres Arranz.
+
+5. Revocacion o cambio de condiciones
+El autor puede revisar, ampliar, limitar o revocar esta autorizacion conforme corresponda, dejando constancia expresa de las nuevas condiciones.
+
+6. Desarrollo fuera del ambito laboral
+El autor declara que el sistema fue desarrollado en computadora personal y fuera del ambito laboral.

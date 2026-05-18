@@ -1,0 +1,732 @@
+const ROLES_OFIJU = ['SUPERADMIN', 'ADMIN', 'GESTOR', 'CONSULTA'];
+const OFIJU_BOOTSTRAP_EMAIL = 'agusa.arranz@gmail.com';
+
+function getEmailUsuarioActual_() {
+  let email = '';
+
+  try {
+    email = Session.getActiveUser().getEmail() || '';
+  } catch (e) {}
+
+  return String(email || '').trim().toLowerCase();
+}
+
+function getEmailUsuarioActualConFallback_() {
+  const activo = getEmailUsuarioActual_();
+  if (activo) return activo;
+  return getEmailBootstrap_();
+}
+
+function getEmailBootstrap_() {
+  let email = '';
+
+  try {
+    email = Session.getEffectiveUser().getEmail() || '';
+  } catch (e) {}
+
+  if (!email) {
+    try {
+      const owner = getSS().getOwner();
+      email = owner && owner.getEmail ? owner.getEmail() : '';
+    } catch (e) {}
+  }
+
+  if (!email) {
+    try {
+      const ownerDrive = DriveApp.getFileById(SS_ID).getOwner();
+      email = ownerDrive && ownerDrive.getEmail ? ownerDrive.getEmail() : '';
+    } catch (e) {}
+  }
+
+  if (!email) email = OFIJU_BOOTSTRAP_EMAIL;
+
+  return String(email || '').trim().toLowerCase();
+}
+
+function getDiagnosticoSesion_() {
+  let tempKey = '';
+  try {
+    tempKey = Session.getTemporaryActiveUserKey() || '';
+  } catch (e) {}
+
+  return {
+    version: typeof OFIJU_APP_VERSION !== 'undefined' ? OFIJU_APP_VERSION : '',
+    activeUser: getEmailUsuarioActual_(),
+    effectiveUser: getEmailBootstrap_(),
+    bootstrapEmail: OFIJU_BOOTSTRAP_EMAIL,
+    temporaryKey: tempKey
+  };
+}
+
+function getUsuariosSheet_() {
+  const ss = getSS();
+  let sheet = ss.getSheetByName('Usuarios');
+  const headersBase = ['EMAIL', 'NOMBRE', 'ROL', 'ACTIVO', 'OBS', 'CREADO'];
+
+  if (!sheet) {
+    sheet = ss.insertSheet('Usuarios');
+    sheet.getRange(1, 1, 1, headersBase.length).setValues([headersBase]);
+    return sheet;
+  }
+
+  const lastCol = Math.max(sheet.getLastColumn(), headersBase.length);
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const sinHeaders = headers.every(function(h) {
+    return h === '' || h === null || typeof h === 'undefined';
+  });
+
+  if (sinHeaders) {
+    sheet.getRange(1, 1, 1, headersBase.length).setValues([headersBase]);
+    return sheet;
+  }
+
+  headersBase.forEach(function(header) {
+    if (buscarIndiceHeader(headers, header) < 0) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
+      headers.push(header);
+    }
+  });
+
+  return sheet;
+}
+
+function getUsuariosData_() {
+  const sheet = getUsuariosSheet_();
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+
+  return {
+    sheet: sheet,
+    data: data,
+    headers: headers,
+    colEmail: buscarIndiceHeader(headers, 'EMAIL'),
+    colNombre: buscarIndiceHeader(headers, 'NOMBRE'),
+    colRol: buscarIndiceHeader(headers, 'ROL'),
+    colActivo: buscarIndiceHeader(headers, 'ACTIVO'),
+    colObs: buscarIndiceHeader(headers, 'OBS'),
+    colCreado: buscarIndiceHeader(headers, 'CREADO')
+  };
+}
+
+function inicializarPrimerSuperadmin_() {
+  const ctx = getUsuariosData_();
+  let tieneUsuarios = false;
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    if (ctx.data[i][ctx.colEmail]) {
+      tieneUsuarios = true;
+      break;
+    }
+  }
+
+  if (tieneUsuarios) return;
+
+  const email = getEmailUsuarioActualConFallback_();
+  if (!email) return;
+
+  ctx.sheet.appendRow([
+    email,
+    email,
+    'SUPERADMIN',
+    true,
+    'Usuario inicial creado automaticamente',
+    new Date()
+  ]);
+}
+
+function getUsuarioActual() {
+  return getUsuarioActual_();
+}
+
+function getUsuarioActual_() {
+  inicializarPrimerSuperadmin_();
+
+  const emailActivo = getEmailUsuarioActual_();
+  const bootstrap = getEmailBootstrap_();
+  const email = emailActivo || bootstrap;
+  const ctx = getUsuariosData_();
+
+  if (!email) {
+    return {
+      email: '',
+      nombre: '',
+      rol: '',
+      activo: false,
+      autorizado: false,
+      msg: 'No se pudo identificar el email del usuario. Revisar despliegue de la webapp.'
+    };
+  }
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    const row = ctx.data[i];
+    const rowEmail = String(row[ctx.colEmail] || '').trim().toLowerCase();
+    if (rowEmail !== email) continue;
+
+    const activo = esTrue_(row[ctx.colActivo]);
+    const rol = String(row[ctx.colRol] || '').trim().toUpperCase();
+
+    return {
+      email: email,
+      nombre: row[ctx.colNombre] || email,
+      rol: rol,
+      activo: activo,
+      autorizado: activo && ROLES_OFIJU.indexOf(rol) >= 0,
+      esBootstrap: email === bootstrap,
+      emailActivo: emailActivo,
+      emailEfectivo: bootstrap,
+      identificacion: emailActivo ? 'active' : (bootstrap === OFIJU_BOOTSTRAP_EMAIL ? 'configured-bootstrap' : 'effective-bootstrap')
+    };
+  }
+
+  if (!emailActivo && bootstrap && email === bootstrap) {
+    return {
+      email: bootstrap,
+      nombre: bootstrap,
+      rol: 'SUPERADMIN',
+      activo: true,
+      autorizado: true,
+      esBootstrap: true,
+      emailActivo: '',
+      emailEfectivo: bootstrap,
+      identificacion: bootstrap === OFIJU_BOOTSTRAP_EMAIL ? 'configured-bootstrap' : 'effective-bootstrap'
+    };
+  }
+
+  return {
+    email: email,
+    nombre: email,
+    rol: '',
+    activo: false,
+    autorizado: false,
+    msg: emailActivo ? 'Usuario no autorizado' : 'No se pudo identificar el email activo del usuario; se intento usar el propietario del despliegue.'
+  };
+}
+
+function usuarioPuede_(usuario, accion) {
+  usuario = usuario || getUsuarioActual_();
+  if (!usuario.autorizado) return false;
+
+  const rol = String(usuario.rol || '').toUpperCase();
+  if (rol === 'SUPERADMIN') return true;
+
+  const permisos = {
+    ADMIN: [
+      'VER', 'OPERAR', 'APROBAR_AGENDADO', 'GESTIONAR_PARTICIPANTES',
+      'VER_USUARIOS', 'GESTIONAR_USUARIOS',
+      'GESTIONAR_CONFIG',
+      'VER_LOGS', 'GESTIONAR_LOGS',
+      'ELIMINAR'
+    ],
+    GESTOR: [
+      'VER', 'OPERAR', 'GESTIONAR_PARTICIPANTES'
+    ],
+    CONSULTA: [
+      'VER'
+    ]
+  };
+
+  return (permisos[rol] || []).indexOf(accion) >= 0;
+}
+
+function requireUsuario_(accion) {
+  const usuario = getUsuarioActual_();
+
+  if (!usuario.autorizado) {
+    throw new Error(usuario.msg || 'Usuario no autorizado');
+  }
+
+  if (accion && !usuarioPuede_(usuario, accion)) {
+    throw new Error('No tenes permisos para realizar esta accion');
+  }
+
+  return usuario;
+}
+
+function getUsuarios() {
+  requireUsuario_('VER_USUARIOS');
+
+  const ctx = getUsuariosData_();
+  const out = [];
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    const row = ctx.data[i];
+    const email = String(row[ctx.colEmail] || '').trim();
+    if (!email) continue;
+
+    out.push({
+      EMAIL: email,
+      NOMBRE: row[ctx.colNombre] || '',
+      ROL: row[ctx.colRol] || '',
+      ACTIVO: esTrue_(row[ctx.colActivo]),
+      OBS: row[ctx.colObs] || ''
+    });
+  }
+
+  return out;
+}
+
+function getActividadUsuariosSheet_() {
+  const ss = getSS();
+  let sheet = ss.getSheetByName('UsuariosActividad');
+  const headersBase = ['EMAIL', 'NOMBRE', 'ROL', 'ULTIMA_ACTIVIDAD', 'PAGINA'];
+
+  if (!sheet) {
+    sheet = ss.insertSheet('UsuariosActividad');
+    sheet.getRange(1, 1, 1, headersBase.length).setValues([headersBase]);
+    return sheet;
+  }
+
+  const lastCol = Math.max(sheet.getLastColumn(), headersBase.length);
+  let headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const sinHeaders = headers.every(function(h) {
+    return h === '' || h === null || typeof h === 'undefined';
+  });
+
+  if (sinHeaders) {
+    sheet.getRange(1, 1, 1, headersBase.length).setValues([headersBase]);
+    return sheet;
+  }
+
+  headersBase.forEach(function(header) {
+    if (buscarIndiceHeader(headers, header) < 0) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
+      headers.push(header);
+    }
+  });
+
+  return sheet;
+}
+
+function getActividadUsuariosData_() {
+  const sheet = getActividadUsuariosSheet_();
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+
+  return {
+    sheet: sheet,
+    data: data,
+    headers: headers,
+    colEmail: buscarIndiceHeader(headers, 'EMAIL'),
+    colNombre: buscarIndiceHeader(headers, 'NOMBRE'),
+    colRol: buscarIndiceHeader(headers, 'ROL'),
+    colUltima: buscarIndiceHeader(headers, 'ULTIMA_ACTIVIDAD'),
+    colPagina: buscarIndiceHeader(headers, 'PAGINA')
+  };
+}
+
+function registrarActividadUsuario(datos) {
+  try {
+    return registrarActividadUsuario_(datos || {});
+  } catch (err) {
+    try { registrarError_('registrarActividadUsuario', err, datos); } catch (e) {}
+    return { ok: false, msg: err && err.message ? err.message : String(err) };
+  }
+}
+
+function registrarActividadUsuario_(datos) {
+  const usuario = getUsuarioActual_();
+  if (!usuario || !usuario.autorizado || !usuario.email) return { ok: false, msg: 'Usuario no autorizado' };
+
+  const ctx = getActividadUsuariosData_();
+  const email = String(usuario.email || '').trim().toLowerCase();
+  const pagina = String(datos.pagina || '').trim().slice(0, 80);
+  const fila = [
+    email,
+    usuario.nombre || email,
+    usuario.rol || '',
+    new Date(),
+    pagina
+  ];
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    const rowEmail = String(ctx.data[i][ctx.colEmail] || '').trim().toLowerCase();
+    if (rowEmail !== email) continue;
+
+    if (ctx.colNombre >= 0) ctx.sheet.getRange(i + 1, ctx.colNombre + 1).setValue(fila[1]);
+    if (ctx.colRol >= 0) ctx.sheet.getRange(i + 1, ctx.colRol + 1).setValue(fila[2]);
+    if (ctx.colUltima >= 0) ctx.sheet.getRange(i + 1, ctx.colUltima + 1).setValue(fila[3]);
+    if (ctx.colPagina >= 0) ctx.sheet.getRange(i + 1, ctx.colPagina + 1).setValue(fila[4]);
+    return { ok: true };
+  }
+
+  ctx.sheet.appendRow(fila);
+  return { ok: true };
+}
+
+function getUsuariosActivos() {
+  requireUsuario_('VER_USUARIOS');
+
+  const ctx = getActividadUsuariosData_();
+  const ahora = new Date().getTime();
+  const out = [];
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    const row = ctx.data[i];
+    const email = String(row[ctx.colEmail] || '').trim();
+    if (!email) continue;
+
+    const rawFecha = row[ctx.colUltima];
+    const fecha = rawFecha instanceof Date ? rawFecha : new Date(rawFecha);
+    const ms = fecha && !isNaN(fecha.getTime()) ? fecha.getTime() : 0;
+    const minutos = ms ? Math.floor((ahora - ms) / 60000) : 9999;
+
+    out.push({
+      EMAIL: email,
+      NOMBRE: row[ctx.colNombre] || email,
+      ROL: row[ctx.colRol] || '',
+      ULTIMA_ACTIVIDAD: ms ? Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm:ss') : '',
+      PAGINA: row[ctx.colPagina] || '',
+      MINUTOS: minutos,
+      ACTIVO: minutos <= 10
+    });
+  }
+
+  out.sort(function(a, b) {
+    return (a.ACTIVO === b.ACTIVO ? 0 : (a.ACTIVO ? -1 : 1)) ||
+      (a.MINUTOS - b.MINUTOS) ||
+      String(a.EMAIL).localeCompare(String(b.EMAIL));
+  });
+
+  return out.slice(0, 50);
+}
+
+function guardarUsuario(datos) {
+  try {
+    return guardarUsuario_(datos);
+  } catch (err) {
+    registrarError_('guardarUsuario', err, datos);
+    throw err;
+  }
+}
+
+function guardarUsuario_(datos) {
+  requireUsuario_('GESTIONAR_USUARIOS');
+
+  if (!datos || !datos.email) throw new Error('Falta email');
+
+  const email = String(datos.email || '').trim().toLowerCase();
+  const rol = String(datos.rol || '').trim().toUpperCase();
+
+  if (ROLES_OFIJU.indexOf(rol) < 0) throw new Error('Rol invalido');
+
+  const ctx = getUsuariosData_();
+  const fila = [
+    email,
+    datos.nombre || email,
+    rol,
+    datos.activo === true || datos.activo === 'true',
+    datos.obs || '',
+    new Date()
+  ];
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    const rowEmail = String(ctx.data[i][ctx.colEmail] || '').trim().toLowerCase();
+    if (rowEmail !== email) continue;
+
+      if (ctx.colNombre >= 0) ctx.sheet.getRange(i + 1, ctx.colNombre + 1).setValue(fila[1]);
+      if (ctx.colRol >= 0) ctx.sheet.getRange(i + 1, ctx.colRol + 1).setValue(fila[2]);
+      if (ctx.colActivo >= 0) ctx.sheet.getRange(i + 1, ctx.colActivo + 1).setValue(fila[3]);
+      if (ctx.colObs >= 0) ctx.sheet.getRange(i + 1, ctx.colObs + 1).setValue(fila[4]);
+
+      registrarHistorial('EDITAR_USUARIO', 'Usuarios', email, 'Rol: ' + rol);
+      return { ok: true, msg: 'Realizado' };
+  }
+
+  ctx.sheet.appendRow(fila);
+  registrarHistorial('CREAR_USUARIO', 'Usuarios', email, 'Rol: ' + rol);
+
+  return { ok: true, msg: 'Realizado' };
+}
+
+function cambiarEstadoUsuario(datos) {
+  try {
+    return cambiarEstadoUsuario_(datos);
+  } catch (err) {
+    registrarError_('cambiarEstadoUsuario', err, datos);
+    throw err;
+  }
+}
+
+function cambiarEstadoUsuario_(datos) {
+  requireUsuario_('GESTIONAR_USUARIOS');
+  if (!datos || !datos.email) throw new Error('Falta email');
+
+  const email = String(datos.email || '').trim().toLowerCase();
+  const ctx = getUsuariosData_();
+
+  for (let i = 1; i < ctx.data.length; i++) {
+    const rowEmail = String(ctx.data[i][ctx.colEmail] || '').trim().toLowerCase();
+    if (rowEmail !== email) continue;
+
+    ctx.sheet.getRange(i + 1, ctx.colActivo + 1).setValue(datos.activo === true || datos.activo === 'true');
+    registrarHistorial('CAMBIAR_ESTADO_USUARIO', 'Usuarios', email, datos.activo ? 'Activado' : 'Desactivado');
+    return { ok: true, msg: 'Realizado' };
+  }
+
+  return { ok: false, msg: 'Usuario no encontrado' };
+}
+
+function aprobarAgendado(datos) {
+  try {
+    requireUsuario_('APROBAR_AGENDADO');
+    return cambiarEstadoRevision_(datos, 'AGENDADO', 'APROBAR_AGENDADO', '');
+  } catch (err) {
+    registrarError_('aprobarAgendado', err, datos);
+    throw err;
+  }
+}
+
+function devolverRevision(datos) {
+  try {
+    const usuario = requireUsuario_('APROBAR_AGENDADO');
+    const motivo = datos && datos.motivo ? String(datos.motivo).trim() : '';
+    const res = cambiarEstadoRevision_(datos, 'PENDIENTE - EN CURSO', 'DEVOLVER_REVISION', motivo);
+
+    if (res.ok && motivo) {
+      agregarObservacionRevision_(datos.hoja, datos.nro_expediente, usuario, motivo);
+    }
+
+    return res;
+  } catch (err) {
+    registrarError_('devolverRevision', err, datos);
+    throw err;
+  }
+}
+
+function cambiarEstadoRevision_(datos, estadoDestino, accionHistorial, detalleExtra) {
+  if (!datos || !datos.hoja || !datos.nro_expediente) throw new Error('Faltan datos de revision');
+
+  const sheet = getSheet(datos.hoja);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[2] || [];
+  const esquema = getEsquemaHoja_(datos.hoja);
+  const startRow = 3;
+  const colExpte = esquema.expteIndex;
+  const colEstado = indiceCampoHoja_(headers, datos.hoja, 'ESTADO');
+
+  for (let i = startRow; i < data.length; i++) {
+    if (String(data[i][colExpte] || '').trim() !== String(datos.nro_expediente || '').trim()) continue;
+
+    const filaActual = serializarFilaHoja_(datos.hoja, headers, data[i]);
+    if (normalizarTexto(filaActual['ESTADO']) !== normalizarTexto('EN REVISION')) {
+      return { ok: false, msg: 'La audiencia no esta en revision' };
+    }
+
+    if (normalizarTexto(estadoDestino) === normalizarTexto('AGENDADO')) {
+      validarDisponibilidadFila_(datos.hoja, datos.nro_expediente, filaActual);
+    }
+
+    const rango = sheet.getRange(i + 1, colEstado + 1);
+    rango.clearDataValidations();
+    rango.setValue(estadoDestino);
+    data[i][colEstado] = estadoDestino;
+    limpiarCacheDatos_(datos.hoja === 'Debate' ? 'debate' : 'oralidad');
+
+    registrarHistorial(
+      accionHistorial,
+      datos.hoja,
+      datos.nro_expediente,
+      detalleExtra || ('Estado cambiado a ' + estadoDestino)
+    );
+
+    return {
+      ok: true,
+      msg: 'Realizado',
+      item: serializarFilaHoja_(datos.hoja, headers, data[i])
+    };
+  }
+
+  return { ok: false, msg: 'Expediente no encontrado' };
+}
+
+function validarDisponibilidadFila_(hoja, expediente, fila) {
+  const fecha = fila['DIA'] || fila['FECHA AUDIENCIA'];
+  const hora = fila['HORA INICIO'] || fila['HORA DE INICIO'];
+  const sala = fila['SALA'] || fila['LUGAR CONFIRM.'];
+  const faltantes = [];
+
+  if (!fecha) faltantes.push('fecha');
+  if (!hora) faltantes.push('hora');
+  if (!sala) faltantes.push('sala');
+  if (!fila['JUEZ']) faltantes.push('juez');
+  if (hoja === 'Oralidad' && !fila['AUDIENCISTA']) faltantes.push('audiencista');
+  if (hoja === 'Debate' && !fila['SECRETARIO']) faltantes.push('secretario');
+
+  if (faltantes.length) {
+    throw new Error('Para aprobar como agendado faltan: ' + faltantes.join(', '));
+  }
+
+  const actores = [
+    fila['JUEZ'], fila['FISCAL'], fila['DEFENSA'],
+    fila['AUDIENCISTA'], fila['ASESOR - QTE'],
+    fila['ASESOR / QTE'], fila['SECRETARIO']
+  ].filter(Boolean);
+
+  const disp = verificarDisponibilidad({
+    fecha: fecha,
+    hora_inicio: hora,
+    duracion: fila['DURACION'] || 60,
+    sala: sala,
+    actores: actores,
+    excluirExpediente: expediente
+  });
+
+  if (!disp.ok) {
+    const detalle = (disp.conflictos || []).map(function(c) {
+      return '- ' + (c.detalle || c.tipo || 'Conflicto detectado');
+    }).join('\n');
+    throw new Error('No se puede aprobar por conflicto de disponibilidad' + (detalle ? '\n' + detalle : ''));
+  }
+}
+
+function agregarObservacionRevision_(hoja, expediente, usuario, motivo) {
+  const sheet = getSheet(hoja);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[2] || [];
+  const esquema = getEsquemaHoja_(hoja);
+  const colObs = indiceCampoHoja_(headers, hoja, 'OBSERVACIONES');
+  if (colObs < 0) return;
+
+  for (let i = 3; i < data.length; i++) {
+    if (String(data[i][esquema.expteIndex] || '').trim() !== String(expediente || '').trim()) continue;
+
+    const actual = data[i][colObs] ? String(data[i][colObs]) + '\n' : '';
+    sheet.getRange(i + 1, colObs + 1).setValue(
+      actual + 'Revision devuelta por ' + usuario.email + ': ' + motivo
+    );
+    return;
+  }
+}
+
+function agregarOpcionConfiguracion(datos) {
+  try {
+    return agregarOpcionConfiguracion_(datos);
+  } catch (err) {
+    registrarError_('agregarOpcionConfiguracion', err, datos);
+    throw err;
+  }
+}
+
+function agregarOpcionConfiguracion_(datos) {
+  requireUsuario_('GESTIONAR_CONFIG');
+  if (!datos || !datos.tipo || !datos.valor) throw new Error('Faltan datos');
+
+  const tipo = String(datos.tipo || '').trim();
+  const valor = String(datos.valor || '').trim();
+  const sheet = getSheet('Configuracion');
+
+  const col = tipo === 'estado' ? 1 : (tipo === 'tipo_audiencia' ? 2 : 3);
+  const fila = primeraFilaLibrePorColumna_(sheet, col, 2);
+
+  sheet.getRange(fila, col).setValue(valor);
+  limpiarCacheDatos_('config');
+  registrarHistorial('CONFIG_AGREGAR_OPCION', 'Configuracion', tipo, valor);
+
+  return { ok: true, msg: 'Realizado' };
+}
+
+function guardarPlazoConfiguracion(datos) {
+  try {
+    return guardarPlazoConfiguracion_(datos);
+  } catch (err) {
+    registrarError_('guardarPlazoConfiguracion', err, datos);
+    throw err;
+  }
+}
+
+function guardarPlazoConfiguracion_(datos) {
+  requireUsuario_('GESTIONAR_CONFIG');
+  if (!datos || !datos.tipo) throw new Error('Falta tipo');
+
+  const tipo = String(datos.tipo || '').trim().toUpperCase();
+  const sheet = getSheet('Configuracion');
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (normalizarTexto(data[i][4]) !== normalizarTexto(tipo)) continue;
+    sheet.getRange(i + 1, 6).setValue(datos.con_preso || '');
+    sheet.getRange(i + 1, 7).setValue(datos.sin_preso || '');
+    limpiarCacheDatos_('config');
+    registrarHistorial('CONFIG_GUARDAR_PLAZO', 'Configuracion', tipo, 'Con preso: ' + (datos.con_preso || '') + ' | Sin preso: ' + (datos.sin_preso || ''));
+    return { ok: true, msg: 'Realizado' };
+  }
+
+  const fila = primeraFilaLibrePorColumna_(sheet, 5, 2);
+  sheet.getRange(fila, 5, 1, 3).setValues([[tipo, datos.con_preso || '', datos.sin_preso || '']]);
+  limpiarCacheDatos_('config');
+  registrarHistorial('CONFIG_CREAR_PLAZO', 'Configuracion', tipo, 'Con preso: ' + (datos.con_preso || '') + ' | Sin preso: ' + (datos.sin_preso || ''));
+
+  return { ok: true, msg: 'Realizado' };
+}
+
+function registrarError_(funcion, err, contexto) {
+  try {
+    const ss = getSS();
+    let sheet = ss.getSheetByName('LogSistema');
+    const headers = [
+      'ID', 'FECHA', 'USUARIO', 'FUNCION', 'ERROR', 'CONTEXTO', 'STACK', 'ESTADO'
+    ];
+
+    if (!sheet) {
+      sheet = ss.insertSheet('LogSistema');
+    }
+
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+    sheet.appendRow([
+      Utilities.getUuid(),
+      new Date(),
+      getEmailUsuarioActual_(),
+      funcion || '',
+      err && err.message ? err.message : String(err || ''),
+      contexto ? JSON.stringify(contexto).slice(0, 4000) : '',
+      err && err.stack ? String(err.stack).slice(0, 4000) : '',
+      'PENDIENTE'
+    ]);
+  } catch (e) {}
+}
+
+function getErroresSistema(limite) {
+  requireUsuario_('VER_LOGS');
+
+  const ss = getSS();
+  const sheet = ss.getSheetByName('LogSistema');
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  const headers = data[0];
+  const out = [];
+  const max = parseInt(limite, 10) || 40;
+
+  for (let i = data.length - 1; i >= 1 && out.length < max; i--) {
+    const row = data[i];
+    const obj = serializarFila(headers, row);
+    if (!obj.ID && row[0]) obj.ID = row[0];
+    out.push(obj);
+  }
+
+  return out;
+}
+
+function marcarErrorSistemaResuelto(id) {
+  requireUsuario_('GESTIONAR_LOGS');
+  if (!id) throw new Error('Falta ID de error');
+
+  const sheet = getSheet('LogSistema');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  const colId = buscarIndiceHeader(headers, 'ID');
+  const colEstado = buscarIndiceHeader(headers, 'ESTADO');
+
+  if (colId < 0 || colEstado < 0) throw new Error('LogSistema no tiene columnas ID/ESTADO');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId] || '') !== String(id || '')) continue;
+    sheet.getRange(i + 1, colEstado + 1).setValue('RESUELTO');
+    return { ok: true, msg: 'Realizado' };
+  }
+
+  return { ok: false, msg: 'Error no encontrado' };
+}

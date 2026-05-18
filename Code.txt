@@ -1,0 +1,364 @@
+/*
+ * OFIJU Agenda
+ * Autor y titular: Agustin Andres Arranz.
+ * Copyright (c) 2026 Agustin Andres Arranz. Todos los derechos reservados.
+ * Uso interno autorizado provisoriamente para OFIJU Penal Oran.
+ * No se ceden derechos patrimoniales ni facultades de distribucion,
+ * modificacion, sublicencia o explotacion fuera de esa autorizacion expresa.
+ */
+
+const SS_ID = '13scJYAGzZ58DGWFZNIM_Zwxri9e5v7srQz-3lqCW0fA';
+const OFIJU_APP_VERSION = 'ofiju-clean-2026-05-12';
+const OFIJU_APP_AUTHOR = 'Agustin Andres Arranz';
+const OFIJU_APP_COPYRIGHT = 'Copyright (c) 2026 Agustin Andres Arranz. Todos los derechos reservados.';
+const OFIJU_APP_AUTHORIZATION = 'Uso interno autorizado provisoriamente para OFIJU Penal Oran, sin cesion de derechos.';
+
+const JUZGADOS = [
+  'GAR 1','GAR 2',
+  'SALA 1 VOC 1','SALA 1 VOC 2','SALA 1 VOC 3',
+  'SALA 2 VOC 1','SALA 2 VOC 2','SALA 2 VOC 3'
+];
+
+function doGet() {
+  try {
+    return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('OFIJU Agenda')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (err) {
+    return HtmlService.createHtmlOutput(ofijuRenderBootError_(err, 'Inicio de la app'))
+      .setTitle('OFIJU Agenda - error')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+}
+
+function include(filename) {
+  try {
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  } catch (err) {
+    return ofijuIncludeFallback_(filename, err);
+  }
+}
+
+function ofijuIncludeFallback_(filename, err) {
+  const msg = 'No se pudo incluir el archivo "' + filename + '". Revisar que la pestana de Apps Script se llame exactamente ' + filename + '. Detalle: ' + ofijuErrorMessage_(err);
+  if (String(filename || '').toUpperCase() === 'CSS') {
+    return '<style>body{margin:0;font-family:Arial,sans-serif;background:#111827;color:#e5e7eb}.app{display:block;padding:24px}.page.active{display:block}.ofiju-boot-error{margin:16px;padding:14px;border:1px solid #ef4444;background:#2a1216;color:#fecaca;border-radius:8px;white-space:pre-wrap}</style>';
+  }
+  if (String(filename || '').toUpperCase() === 'JS') {
+    return '<script>window.addEventListener("load",function(){var d=document.createElement("pre");d.className="ofiju-boot-error";d.style.cssText="margin:16px;padding:14px;border:1px solid #ef4444;background:#2a1216;color:#fecaca;border-radius:8px;white-space:pre-wrap;font-family:Arial,sans-serif";d.textContent=' + JSON.stringify(msg) + ';document.body.insertBefore(d,document.body.firstChild);});</script>';
+  }
+  return '<!-- ' + ofijuEscapeHtml_(msg) + ' -->';
+}
+
+function ofijuRenderBootError_(err, contexto) {
+  const detalle = ofijuErrorMessage_(err);
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;font-family:Arial,sans-serif;background:#111827;color:#e5e7eb;padding:24px}.box{max-width:860px;border:1px solid #ef4444;background:#2a1216;color:#fecaca;border-radius:10px;padding:18px;line-height:1.45}h1{font-size:20px;margin:0 0 10px;color:#fff}pre{white-space:pre-wrap;font-family:Consolas,monospace;font-size:12px}</style></head><body><div class="box"><h1>OFIJU Agenda no pudo iniciar</h1><p>' + ofijuEscapeHtml_(contexto || 'Inicio') + '</p><pre>' + ofijuEscapeHtml_(detalle) + '</pre><p>Si esto aparecio despues de copiar archivos, revisar especialmente los nombres exactos de las pestanas: Index, CSS y JS.</p></div></body></html>';
+}
+
+function ofijuErrorMessage_(err) {
+  if (!err) return 'Error desconocido';
+  return err.stack || err.message || String(err);
+}
+
+function ofijuEscapeHtml_(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function apiGetAllData(options) {
+  const inicio = Date.now();
+  options = options || {};
+
+  try {
+    const usuario = getUsuarioActual();
+
+    if (!usuario.autorizado) {
+      return respuestaDatos_(usuario, {
+        ms: Date.now() - inicio,
+        noAutorizado: true
+      });
+    }
+
+    const erroresCarga = [];
+    const puedeVerUsuarios = usuarioPuede_(usuario, 'VER_USUARIOS');
+    const puedeVerLogs = usuarioPuede_(usuario, 'VER_LOGS');
+
+    return {
+      usuario: usuario,
+      oralidad: cargarSeccionDatos_('oralidad', getOralidad, [], erroresCarga),
+      debate: cargarSeccionDatos_('debate', getDebate, [], erroresCarga),
+      participantes: cargarSeccionDatos_('participantes', getParticipantes, [], erroresCarga),
+      imputados: typeof getImputadosExpediente === 'function'
+        ? cargarSeccionDatos_('imputados', getImputadosExpediente, [], erroresCarga)
+        : [],
+      config: cargarSeccionDatos_('config', getConfiguracion, {}, erroresCarga),
+      historial: options.includeHistorial
+        ? cargarSeccionDatos_('historial', getHistorial, [], erroresCarga)
+        : [],
+      usuarios: puedeVerUsuarios && typeof getUsuarios === 'function'
+        ? cargarSeccionDatos_('usuarios', getUsuarios, [], erroresCarga)
+        : [],
+      errores: puedeVerLogs
+        ? cargarSeccionDatos_('errores', function() { return getErroresSistemaSeguro(40); }, [], erroresCarga)
+        : [],
+      meta: metaCarga_(Date.now() - inicio, {
+        historialIncluido: !!options.includeHistorial,
+        erroresCarga: erroresCarga
+      })
+    };
+  } catch (err) {
+    try {
+      if (typeof registrarError_ === 'function') registrarError_('apiGetAllData', err, options);
+    } catch (e) {}
+
+    return respuestaDatos_({
+      email: '',
+      nombre: '',
+      rol: '',
+      activo: false,
+      autorizado: false,
+      msg: err && err.message ? err.message : String(err || 'Error desconocido')
+    }, {
+      ms: Date.now() - inicio,
+      errorFatal: err && err.message ? err.message : String(err || 'Error desconocido')
+    });
+  }
+}
+
+function apiGetAllDataJson(options) {
+  return JSON.stringify(apiGetAllData(options || {}));
+}
+
+function apiGetDataChunkJson(tipo) {
+  const inicio = Date.now();
+  const usuario = getUsuarioActual();
+  if (!usuario.autorizado) {
+    return JSON.stringify({
+      ok: false,
+      tipo: tipo || '',
+      msg: usuario.msg || 'Usuario no autorizado',
+      items: [],
+      meta: metaCarga_(Date.now() - inicio, { noAutorizado: true })
+    });
+  }
+
+  try {
+    let items = [];
+    const t = String(tipo || '').toLowerCase();
+
+    if (t === 'debate') items = getDebate();
+    else if (t === 'participantes') items = getParticipantes();
+    else if (t === 'oralidad') items = getOralidad();
+    else if (t === 'config') items = getConfiguracion();
+    else throw new Error('Chunk no reconocido: ' + tipo);
+
+    return JSON.stringify({
+      ok: true,
+      tipo: t,
+      items: items,
+      count: Array.isArray(items) ? items.length : 0,
+      meta: metaCarga_(Date.now() - inicio, {})
+    });
+  } catch (err) {
+    try {
+      if (typeof registrarError_ === 'function') registrarError_('apiGetDataChunkJson.' + tipo, err, {});
+    } catch (e) {}
+
+    return JSON.stringify({
+      ok: false,
+      tipo: tipo || '',
+      msg: err && err.message ? err.message : String(err || 'Error desconocido'),
+      items: [],
+      meta: metaCarga_(Date.now() - inicio, {
+        errorFatal: err && err.message ? err.message : String(err || 'Error desconocido')
+      })
+    });
+  }
+}
+
+function getErroresSistemaSeguro(limite) {
+  if (typeof getErroresSistema === 'function') {
+    return getErroresSistema(limite);
+  }
+
+  if (typeof requireUsuario_ === 'function') requireUsuario_('VER_LOGS');
+
+  const ss = getSS();
+  const sheet = ss.getSheetByName('LogSistema');
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  const headers = data[0];
+  const out = [];
+  const max = parseInt(limite, 10) || 40;
+
+  for (let i = data.length - 1; i >= 1 && out.length < max; i--) {
+    const row = data[i];
+    const obj = serializarFila(headers, row);
+    if (!obj.ID && row[0]) obj.ID = row[0];
+    out.push(obj);
+  }
+
+  return out;
+}
+
+function marcarErrorSistemaResueltoSeguro(id) {
+  if (typeof marcarErrorSistemaResuelto === 'function') {
+    return marcarErrorSistemaResuelto(id);
+  }
+
+  if (typeof requireUsuario_ === 'function') requireUsuario_('GESTIONAR_LOGS');
+  if (!id) throw new Error('Falta ID de error');
+
+  const sheet = getSheet('LogSistema');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  const colId = buscarIndiceHeader(headers, 'ID');
+  const colEstado = buscarIndiceHeader(headers, 'ESTADO');
+
+  if (colId < 0 || colEstado < 0) return { ok: false, msg: 'LogSistema no tiene columnas ID/ESTADO' };
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colId] || '') !== String(id || '')) continue;
+    sheet.getRange(i + 1, colEstado + 1).setValue('RESUELTO');
+    return { ok: true, msg: 'Realizado' };
+  }
+
+  return { ok: false, msg: 'Error no encontrado' };
+}
+
+function getAllData(options) {
+  return apiGetAllData(options);
+}
+
+function ofijuGetAllDataV2(options) {
+  return apiGetAllData(options);
+}
+
+function diagnosticoOFIJU() {
+  return {
+    version: OFIJU_APP_VERSION,
+    usuario: typeof getUsuarioActual === 'function' ? getUsuarioActual() : null,
+    sesion: diagnosticoSesionSeguro_()
+  };
+}
+
+function probarApiOFIJU() {
+  const data = apiGetAllData({ includeHistorial: false });
+  const resumen = {
+    version: data && data.meta ? data.meta.version : '',
+    tieneUsuario: !!(data && data.usuario),
+    usuario: data && data.usuario ? data.usuario : null,
+    conteos: {
+      oralidad: data && data.oralidad ? data.oralidad.length : 0,
+      debate: data && data.debate ? data.debate.length : 0,
+      participantes: data && data.participantes ? data.participantes.length : 0,
+      imputados: data && data.imputados ? data.imputados.length : 0
+    },
+    muestras: {
+      oralidad: data && data.oralidad && data.oralidad[0] ? data.oralidad[0] : null,
+      debate: data && data.debate && data.debate[0] ? data.debate[0] : null,
+      participante: data && data.participantes && data.participantes[0] ? data.participantes[0] : null
+    },
+    keys: data ? Object.keys(data) : [],
+    meta: data && data.meta ? data.meta : null
+  };
+
+  console.log(JSON.stringify(resumen, null, 2));
+  return resumen;
+}
+
+function diagnosticoDatosOFIJU() {
+  const data = apiGetAllData({ includeHistorial: false });
+  return {
+    version: data && data.meta ? data.meta.version : '',
+    conteos: {
+      oralidad: data && data.oralidad ? data.oralidad.length : 0,
+      debate: data && data.debate ? data.debate.length : 0,
+      participantes: data && data.participantes ? data.participantes.length : 0
+    },
+    primerasClaves: {
+      oralidad: data && data.oralidad && data.oralidad[0] ? Object.keys(data.oralidad[0]) : [],
+      debate: data && data.debate && data.debate[0] ? Object.keys(data.debate[0]) : [],
+      participantes: data && data.participantes && data.participantes[0] ? Object.keys(data.participantes[0]) : []
+    },
+    erroresCarga: data && data.meta ? (data.meta.erroresCarga || []) : []
+  };
+}
+
+function diagnosticoDatosOFIJUJson() {
+  return JSON.stringify(diagnosticoDatosOFIJU());
+}
+
+function respuestaDatos_(usuario, metaExtra) {
+  return {
+    usuario: usuario,
+    oralidad: [],
+    debate: [],
+    participantes: [],
+    imputados: [],
+    config: {},
+    historial: [],
+    usuarios: [],
+    errores: [],
+    meta: metaCarga_(metaExtra && metaExtra.ms ? metaExtra.ms : 0, metaExtra || {})
+  };
+}
+
+function metaCarga_(ms, extra) {
+  const meta = {
+    version: OFIJU_APP_VERSION,
+    ms: ms,
+    sesion: diagnosticoSesionSeguro_()
+  };
+
+  extra = extra || {};
+  Object.keys(extra).forEach(function(k) {
+    if (k !== 'ms') meta[k] = extra[k];
+  });
+
+  return meta;
+}
+
+function diagnosticoSesionSeguro_() {
+  try {
+    if (typeof getDiagnosticoSesion_ === 'function') return getDiagnosticoSesion_();
+  } catch (e) {
+    return {
+      error: e && e.message ? e.message : String(e || ''),
+      version: OFIJU_APP_VERSION
+    };
+  }
+
+  return {
+    error: 'getDiagnosticoSesion_ no disponible',
+    version: OFIJU_APP_VERSION
+  };
+}
+
+function cargarSeccionDatos_(nombre, fn, fallback, erroresCarga) {
+  try {
+    return fn();
+  } catch (err) {
+    erroresCarga.push({
+      seccion: nombre,
+      error: err && err.message ? err.message : String(err)
+    });
+
+    try {
+      if (typeof registrarError_ === 'function') {
+        registrarError_('apiGetAllData.' + nombre, err, {});
+      }
+    } catch (e) {}
+
+    return fallback;
+  }
+}

@@ -1,0 +1,1080 @@
+function guardarOralidad(datos) {
+  requireUsuario_('OPERAR');
+  validarExpediente(datos);
+  const sheet = getSheet('Oralidad');
+  const headers = asegurarColumnasSistemaAudiencias_('Oralidad', sheet);
+  const fila = nuevaFilaHoja_('Oralidad', headers);
+
+  const ingresoOga = fechaInputAFechaSheet(datos.ingreso_oga) || new Date();
+  const ingresoExpteFisico = fechaInputAFechaSheet(
+    datos.ingreso_expte_fisico || datos.ingreso_expte || ''
+  );
+
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'INGRESO OGA', ingresoOga);
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'TIPO EXP', datos.tipo_exp || '');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'Nº EXPEDIENTE', datos.nro_expediente || '');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'IMPUTADO(S)', datos.imputado || '');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'DNI IMPUTADO', datos.dni_imputado || datos.dni || '');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'INGRESO EXP.', ingresoExpteFisico);
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'TIPO DE AUD.', normalizarTipoAudienciaOralidad_(datos.tipo_aud));
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'PRESO', datos.preso === true || datos.preso === 'true');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'GESTOR', datos.gestor || '');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'ESTADO', 'PENDIENTE - EN CURSO');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'FISCAL', datos.fiscalia || datos.fiscal || '');
+  setValorPorCampoHoja_('Oralidad', headers, fila, 'DURACION', 60);
+
+  const fechaLimite = calcularFechaLimiteOralidad_(Object.assign({}, datos, {
+    ingreso_oga: ingresoOga,
+    ingreso_expte_fisico: ingresoExpteFisico,
+    tipo_aud: normalizarTipoAudienciaOralidad_(datos.tipo_aud)
+  }));
+
+  if (fechaLimite) {
+    setValorPorCampoHoja_('Oralidad', headers, fila, 'FECHA LIMITE', fechaLimite);
+  }
+
+  const filaLibre = primeraFilaLibrePorColumna_(sheet, 3, 4);
+  escribirFilaSegura_(sheet, filaLibre, fila, 'Oralidad', headers);
+  limpiarCacheDatos_('oralidad');
+
+  registrarHistorial(
+    'CREAR_ORALIDAD',
+    'Oralidad',
+    datos.nro_expediente,
+    'Solicitud de oralidad creada'
+  );
+
+  return { ok: true, msg: 'Realizado', item: serializarFilaHoja_('Oralidad', headers, fila) };
+}
+
+function guardarDebate(datos) {
+  requireUsuario_('OPERAR');
+  validarExpediente(datos);
+  const sheet = getSheet('Debate');
+  const headers = asegurarColumnasSistemaAudiencias_('Debate', sheet);
+  const fila = nuevaFilaHoja_('Debate', headers);
+
+  setValorPorCampoHoja_('Debate', headers, fila, 'Nº EXPTE', datos.nro_expediente || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'IMPUTADO(S)', datos.imputado || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'DNI IMPUTADO', datos.dni_imputado || datos.dni || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'TIPO DE AUD', normalizarTipoAudienciaDebate_(datos.tipo_aud));
+  setValorPorCampoHoja_('Debate', headers, fila, 'PRESO', datos.preso === true || datos.preso === 'true');
+  setValorPorCampoHoja_('Debate', headers, fila, 'LUGAR SOLICITADO', datos.lugar_solicitado || 'SIN PREFERENCIA');
+  setValorPorCampoHoja_('Debate', headers, fila, 'DIAS SOLICITADOS', datos.dias_solicitados || 1);
+  setValorPorCampoHoja_('Debate', headers, fila, 'HORAS X DIA', datos.cantidad_jornadas || datos.horas_x_dia || 1);
+  setValorPorCampoHoja_('Debate', headers, fila, 'SE PUEDE YA', datos.se_puede_ya === true || datos.se_puede_ya === 'true');
+  setValorPorCampoHoja_('Debate', headers, fila, 'GESTOR', datos.gestor || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'JUEZ', datos.juez || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'SECRETARIO', datos.secretario || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'FISCAL', datos.fiscal || datos.fiscalia || '');
+  setValorPorCampoHoja_('Debate', headers, fila, 'ESTADO', 'PENDIENTE - EN CURSO');
+  setValorPorCampoHoja_('Debate', headers, fila, 'DURACION', 90);
+  setValorPorCampoHoja_('Debate', headers, fila, 'FECHA LIMITE', fechaInputAFechaSheet(datos.fecha_limite));
+
+  const filaLibre = primeraFilaLibrePorColumna_(sheet, 1, 4);
+  escribirFilaSegura_(sheet, filaLibre, fila, 'Debate', headers);
+  limpiarCacheDatos_('debate');
+
+  registrarHistorial(
+    'CREAR_DEBATE',
+    'Debate',
+    datos.nro_expediente,
+    'Solicitud de debate creada'
+  );
+
+  return { ok: true, msg: 'Realizado', item: serializarFilaHoja_('Debate', headers, fila) };
+}
+
+function guardar(datos, tramite) {
+  try {
+    return tramite === 'debate' ? guardarDebate(datos) : guardarOralidad(datos);
+  } catch (err) {
+    registrarError_('guardar', err, {
+      tramite: tramite,
+      expediente: datos && datos.nro_expediente
+    });
+    throw err;
+  }
+}
+
+function actualizarExpediente(datos) {
+  try {
+    return actualizarExpediente_(datos);
+  } catch (err) {
+    registrarError_('actualizarExpediente', err, {
+      hoja: datos && datos.hoja,
+      expediente: datos && datos.nro_expediente,
+      campos: datos && datos.campos
+    });
+    throw err;
+  }
+}
+
+function actualizarExpediente_(datos) {
+  const usuario = requireUsuario_('OPERAR');
+
+  if (!datos || !datos.hoja) throw new Error('Falta indicar la hoja');
+  if (!datos.nro_expediente) throw new Error('Falta indicar el expediente');
+
+  const sheet = getSheet(datos.hoja);
+  if (datos.hoja === 'Oralidad' || datos.hoja === 'Debate') {
+    asegurarColumnasSistemaAudiencias_(datos.hoja, sheet);
+  }
+  const data = sheet.getDataRange().getValues();
+  const headerRow = datos.hoja === 'Participantes' ? 0 : 2;
+  const startRow = datos.hoja === 'Participantes' ? 1 : 3;
+  const headers = data[headerRow];
+  const esquema = getEsquemaHoja_(datos.hoja);
+  const colExpte = esquema && typeof esquema.expteIndex === 'number'
+    ? esquema.expteIndex
+    : (datos.hoja === 'Oralidad' ? 2 : 0);
+  const campos = Object.assign({}, datos.campos || {});
+  let enviadoRevision = false;
+
+  if (normalizarTexto(campos['ESTADO']) === normalizarTexto('AGENDADO')) {
+    campos['ESTADO'] = 'EN REVISION';
+    enviadoRevision = true;
+  }
+
+  for (let i = startRow; i < data.length; i++) {
+    const actual = String(data[i][colExpte] || '').trim();
+    const buscado = String(datos.nro_expediente || '').trim();
+    if (actual !== buscado) continue;
+
+    const filaActual = serializarFilaHoja_(datos.hoja, headers, data[i]);
+    const estadoPrevio = filaActual['ESTADO'] || '';
+    const datosFinales = Object.assign({}, filaActual, campos);
+    const camposVerificacion = filtrarCamposModificados_(headers, datos.hoja, data[i], campos);
+
+    if (datos.hoja === 'Oralidad' && debeRecalcularFechaLimiteOralidad_(camposVerificacion)) {
+      const fechaLimite = calcularFechaLimiteOralidad_(datosFinales);
+      if (fechaLimite) {
+        campos['FECHA LIMITE'] = fechaLimite;
+        datosFinales['FECHA LIMITE'] = fechaLimite;
+        camposVerificacion['FECHA LIMITE'] = fechaLimite;
+      }
+    }
+
+    const cambiosRevision = enviadoRevision
+      ? crearCambiosRevision_(filaActual, datosFinales, camposVerificacion)
+      : [];
+
+    const fecha = datosFinales['DIA'] || datosFinales['FECHA AUDIENCIA'];
+    const hora = datosFinales['HORA INICIO'] || datosFinales['HORA DE INICIO'];
+    const duracion = datosFinales['DURACION'] || 60;
+    const sala = datosFinales['SALA'] || datosFinales['LUGAR CONFIRM.'];
+    const actores = [
+      datosFinales['JUEZ'], datosFinales['FISCAL'], datosFinales['DEFENSA'],
+      datosFinales['AUDIENCISTA'], datosFinales['ASESOR - QTE'],
+      datosFinales['ASESOR / QTE'], datosFinales['SECRETARIO']
+    ].filter(Boolean);
+
+    if (fecha && hora && debeVerificarDisponibilidadEdicion_(camposVerificacion, datosFinales)) {
+      const disp = verificarDisponibilidad({
+        fecha: fecha,
+        hora_inicio: hora,
+        duracion: duracion,
+        sala: sala,
+        actores: actores,
+        excluirExpediente: datos.nro_expediente
+      });
+
+      if (!disp.ok) return { ok: false, msg: 'Conflicto de disponibilidad', conflictos: disp.conflictos };
+    }
+
+    const warnings = [];
+
+    Object.keys(campos).forEach(function(campo) {
+      const colIdx = indiceCampoHoja_(headers, datos.hoja, campo);
+      if (colIdx < 0) return;
+
+      if (valoresEquivalentesParaGuardar_(data[i][colIdx], campos[campo], campo)) return;
+
+      let val = campos[campo];
+      val = fechaInputAFechaSheet(val);
+
+      try {
+        const rango = sheet.getRange(i + 1, colIdx + 1);
+        if (val === '' || val === null || typeof val === 'undefined') {
+          rango.clearContent();
+        } else {
+          if (esCampoMultipleLibre_(campo, val)) {
+            // Para Asesor/QTE múltiple necesitamos permitir más de un valor en la misma celda.
+            // Una validación estricta de dropdown simple lo rechaza, así que se libera solo esa celda.
+            rango.clearDataValidations();
+            rango.setValue(val);
+          } else {
+            val = valorCompatibleConValidacion_(rango, val, campo);
+            if (campoControladoPorBackend_(campo)) {
+              rango.clearDataValidations();
+              rango.setValue(val);
+            } else {
+              rango.setValue(val);
+            }
+          }
+        }
+      } catch (err) {
+        warnings.push(campo + ': no se pudo guardar "' + val + '" por validación de datos');
+      }
+    });
+
+    if (warnings.length > 0) return { ok: false, msg: warnings.join('\n'), warnings: warnings };
+
+    const filaRetorno = data[i].slice();
+    Object.keys(campos).forEach(function(campo) {
+      const colIdx = indiceCampoHoja_(headers, datos.hoja, campo);
+      if (colIdx >= 0 && !valoresEquivalentesParaGuardar_(data[i][colIdx], campos[campo], campo)) {
+        filaRetorno[colIdx] = fechaInputAFechaSheet(campos[campo]);
+      }
+    });
+
+    if (datos.hoja === 'Debate') limpiarCacheDatos_('debate');
+    else if (datos.hoja === 'Oralidad') limpiarCacheDatos_('oralidad');
+
+    registrarHistorial(
+      enviadoRevision ? 'SOLICITAR_AGENDADO' : 'EDITAR_EXPEDIENTE',
+      datos.hoja,
+      datos.nro_expediente,
+      enviadoRevision ? JSON.stringify({
+        estado_previo: estadoPrevio,
+        estado_solicitado: 'AGENDADO',
+        estado_temporal: 'EN REVISION',
+        cambios: cambiosRevision,
+        campos: campos
+      }) : JSON.stringify(campos)
+    );
+
+    if (enviadoRevision && datos.reserva_id && typeof confirmarReservaAsignacion_ === 'function') {
+      confirmarReservaAsignacion_(datos.reserva_id, datos.hoja, datos.nro_expediente, datosFinales);
+    }
+
+    return {
+      ok: true,
+      msg: enviadoRevision ? 'Enviado a revision' : 'Realizado',
+      enRevision: enviadoRevision,
+      item: serializarFilaHoja_(datos.hoja, headers, filaRetorno),
+      warnings: warnings
+    };
+  }
+
+  return { ok: false, msg: 'Expediente no encontrado' };
+}
+
+function crearCambiosRevision_(antes, despues, campos) {
+  const out = [];
+
+  Object.keys(campos || {}).forEach(function(campo) {
+    const valorAntes = antes && Object.prototype.hasOwnProperty.call(antes, campo) ? antes[campo] : '';
+    let valorDespues = despues && Object.prototype.hasOwnProperty.call(despues, campo) ? despues[campo] : campos[campo];
+
+    if (normalizarTexto(campo) === normalizarTexto('ESTADO') &&
+        normalizarTexto(valorDespues) === normalizarTexto('EN REVISION')) {
+      valorDespues = 'AGENDADO';
+    }
+
+    out.push({
+      campo: campo,
+      antes: formatearValorRevision_(campo, valorAntes),
+      despues: formatearValorRevision_(campo, valorDespues)
+    });
+  });
+
+  return out;
+}
+
+function formatearValorRevision_(campo, valor) {
+  if (valor === null || typeof valor === 'undefined') return '';
+
+  const c = normalizarTexto(campo);
+  if (valor instanceof Date || c.indexOf('FECHA') >= 0 || c === 'DIA') {
+    return fechaInputAString(valor) || String(valor || '');
+  }
+
+  return String(valor || '');
+}
+
+function valorCompatibleConValidacion_(rango, val, campo) {
+  if (val === '' || val === null || typeof val === 'undefined') return val;
+
+  const opciones = obtenerOpcionesValidacion_(rango);
+  if (!opciones || opciones.length === 0) return val;
+
+  const alternativas = alternativasValor_(val, campo);
+  for (let i = 0; i < opciones.length; i++) {
+    const op = String(opciones[i] || '').trim();
+    const opNorm = normalizarTexto(op);
+    if (alternativas.indexOf(opNorm) >= 0) return op;
+  }
+
+  return val;
+}
+
+function filtrarCamposModificados_(headers, nombreHoja, row, campos) {
+  const out = {};
+
+  Object.keys(campos || {}).forEach(function(campo) {
+    const colIdx = indiceCampoHoja_(headers, nombreHoja, campo);
+    if (colIdx < 0) return;
+    if (valoresEquivalentesParaGuardar_(row[colIdx], campos[campo], campo)) return;
+    out[campo] = campos[campo];
+  });
+
+  return out;
+}
+
+function obtenerOpcionesValidacion_(rango) {
+  const regla = rango.getDataValidation();
+  if (!regla) return [];
+
+  const tipo = regla.getCriteriaType();
+  const valores = regla.getCriteriaValues();
+
+  if (tipo === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+    return valores[0] || [];
+  }
+
+  if (tipo === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
+    const range = valores[0];
+    return range.getValues().flat().filter(function(x) {
+      return x !== '' && x !== null && typeof x !== 'undefined';
+    });
+  }
+
+  return [];
+}
+
+function esCampoMultipleLibre_(campo, val) {
+  const c = normalizarTexto(campo);
+  const s = String(val || '');
+
+  const esAsesor = c === normalizarTexto('ASESOR - QTE') ||
+                   c === normalizarTexto('ASESOR / QTE') ||
+                   c === normalizarTexto('ASESOR-QTE');
+
+  if (!esAsesor) return false;
+
+  // Si hay separadores, no es un único valor del dropdown.
+  return s.indexOf(';') >= 0 || s.indexOf('/') >= 0 || s.indexOf(',') >= 0;
+}
+
+function alternativasValor_(val, campo) {
+  const out = [normalizarTexto(val)];
+
+  const camposActor = ['JUEZ','FISCAL','DEFENSA','AUDIENCISTA','GESTOR','ASESOR - QTE','ASESOR / QTE','ASESOR-QTE','SECRETARIO'];
+  if (camposActor.indexOf(campo) >= 0) {
+    try {
+      const participantes = getParticipantes();
+      const buscado = normalizarTexto(val);
+      const rol = rolDesdeCampoActor_(campo);
+
+      participantes.forEach(function(p) {
+        if (buscado && participanteCoincideConValor_(p, buscado, rol)) {
+          valoresParticipanteComparacion_(p, rol).forEach(function(v) {
+            if (v) out.push(v);
+          });
+        }
+      });
+    } catch (e) {}
+  }
+
+  const c = normalizarTexto(campo);
+  if (c.indexOf('DURACION') >= 0 || c.indexOf('HORAS X DIA') >= 0) {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) {
+      out.push(normalizarTexto(n + ' MIN'));
+      out.push(normalizarTexto(n + ' MIN.'));
+      out.push(normalizarTexto(n + ' MINUTOS'));
+      if (n % 60 === 0) {
+        const horas = n / 60;
+        out.push(normalizarTexto(horas + ' HORA'));
+        out.push(normalizarTexto(horas + ' HORAS'));
+      }
+    }
+  }
+
+  return out.filter(function(x, i, arr){ return x && arr.indexOf(x) === i; });
+}
+
+function valoresEquivalentesParaGuardar_(actual, nuevo, campo) {
+  const actualVacio = actual === '' || actual === null || typeof actual === 'undefined';
+  const nuevoVacio = nuevo === '' || nuevo === null || typeof nuevo === 'undefined';
+
+  if (actualVacio && nuevoVacio) return true;
+  if (actualVacio || nuevoVacio) return false;
+
+  const c = normalizarTexto(campo);
+
+  if (actual instanceof Date || c.indexOf('FECHA') >= 0 || c === 'DIA') {
+    const a = normalizarFechaComparacion(actual);
+    const b = normalizarFechaComparacion(nuevo);
+    if (a || b) return a === b;
+  }
+
+  if (c.indexOf('DURACION') >= 0 || c.indexOf('HORAS X DIA') >= 0) {
+    const aNum = parseInt(actual, 10);
+    const bNum = parseInt(nuevo, 10);
+    if (!isNaN(aNum) && !isNaN(bNum)) return aNum === bNum;
+  }
+
+  if (['PRESO', 'SE PUEDE YA', 'ACTIVO'].indexOf(c) >= 0) {
+    return esTrue_(actual) === esTrue_(nuevo);
+  }
+
+  return normalizarTexto(actual) === normalizarTexto(nuevo);
+}
+
+function debeVerificarDisponibilidadEdicion_(campos, datosFinales) {
+  const estado = normalizarTexto(datosFinales['ESTADO']);
+  if (estado === normalizarTexto('CANCELADA') || estado === normalizarTexto('REALIZADA')) return false;
+
+  const estadoSolicitado = normalizarTexto(campos && campos['ESTADO']);
+  if (estadoSolicitado === normalizarTexto('AGENDADO') ||
+      estadoSolicitado === normalizarTexto('EN REVISION')) {
+    return true;
+  }
+
+  const relevantes = [
+    'DIA', 'FECHA AUDIENCIA',
+    'HORA INICIO', 'HORA DE INICIO',
+    'DURACION', 'SALA', 'LUGAR CONFIRM.',
+    'JUEZ', 'FISCAL', 'DEFENSA', 'AUDIENCISTA',
+    'ASESOR - QTE', 'ASESOR / QTE', 'ASESOR-QTE', 'SECRETARIO'
+  ];
+
+  return Object.keys(campos || {}).some(function(campo) {
+    return relevantes.indexOf(campo) >= 0;
+  });
+}
+
+function campoControladoPorBackend_(campo) {
+  const c = normalizarTexto(campo);
+  return [
+    'ESTADO', 'RESULTADO', 'SALA', 'LUGAR CONFIRM.', 'TIPO DE AUD.', 'TIPO DE AUD',
+    'DURACION', 'HORA INICIO', 'HORA DE INICIO', 'DIA', 'FECHA AUDIENCIA', 'FECHA LIMITE',
+    'DNI IMPUTADO',
+    'JUEZ', 'FISCAL', 'DEFENSA', 'AUDIENCISTA', 'GESTOR',
+    'ASESOR - QTE', 'ASESOR / QTE', 'ASESOR-QTE', 'SECRETARIO'
+  ].map(normalizarTexto).indexOf(c) >= 0;
+}
+
+function eliminarExpedienteBackend(datos) {
+  try {
+    return eliminarExpedienteBackend_(datos);
+  } catch (err) {
+    registrarError_('eliminarExpedienteBackend', err, datos);
+    throw err;
+  }
+}
+
+function eliminarExpedienteBackend_(datos) {
+  requireUsuario_('ELIMINAR');
+
+  if (!datos || !datos.hoja) throw new Error('Falta indicar la hoja');
+  if (!datos.nro_expediente) throw new Error('Falta indicar el expediente');
+
+  const sheet = getSheet(datos.hoja);
+  const data = sheet.getDataRange().getValues();
+  const startRow = 3;
+  const colExpte = datos.hoja === 'Oralidad' ? 2 : 0;
+
+  for (let i = startRow; i < data.length; i++) {
+    if (String(data[i][colExpte] || '').trim() === String(datos.nro_expediente || '').trim()) {
+      sheet.deleteRow(i + 1);
+      if (datos.hoja === 'Debate') limpiarCacheDatos_('debate');
+      else if (datos.hoja === 'Oralidad') limpiarCacheDatos_('oralidad');
+
+      registrarHistorial(
+        'ELIMINAR_EXPEDIENTE',
+        datos.hoja,
+        datos.nro_expediente,
+        'Registro eliminado'
+      );
+
+      return { ok: true, msg: 'Realizado' };
+    }
+  }
+
+  return { ok: false, msg: 'Expediente no encontrado' };
+}
+
+function registrarIngresoFisicoExpediente(datos) {
+  try {
+    return registrarIngresoFisicoExpediente_(datos);
+  } catch (err) {
+    registrarError_('registrarIngresoFisicoExpediente', err, datos);
+    throw err;
+  }
+}
+
+function registrarIngresoFisicoExpediente_(datos) {
+  requireUsuario_('OPERAR');
+  datos = datos || {};
+
+  if (!datos.nro_expediente) throw new Error('Falta indicar expediente');
+  if (!datos.fecha) throw new Error('Falta indicar fecha de ingreso');
+
+  const fecha = fechaInputAFechaSheet(datos.fecha);
+  const hora = normalizarHoraIngresoFisico_(datos.hora) ||
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'HH:mm');
+  const target = buscarUltimaIntervencionExpediente_(datos.nro_expediente);
+  if (!target) {
+    if (typeof registrarMovimientoExpediente_ === 'function') {
+      const mov = registrarMovimientoExpediente_({
+        expediente: datos.nro_expediente,
+        fecha: datos.fecha,
+        hora: hora,
+        tipo: 'Ingreso fisico',
+        ubicacion: 'Recepcion',
+        observacion: datos.observacion || 'Ingreso fisico sin solicitud vinculada'
+      });
+      return {
+        ok: true,
+        msg: 'Ingreso fisico registrado como movimiento',
+        soloMovimiento: true,
+        movimiento: mov.movimiento
+      };
+    }
+    return { ok: false, msg: 'No se encontro el expediente' };
+  }
+
+  target.headers = asegurarColumnasIngresoFisico_(target.sheet, target.hoja);
+  const col = indiceCampoHoja_(target.headers, target.hoja, 'INGRESO EXPTE FISICO');
+  if (col < 0) throw new Error('No se pudo ubicar la columna de ingreso fisico');
+  const colHora = indiceCampoHoja_(target.headers, target.hoja, 'HORA INGRESO FISICO');
+
+  const rango = target.sheet.getRange(target.fila, col + 1);
+  rango.clearDataValidations();
+  rango.setValue(fecha);
+  target.row[col] = fecha;
+  if (colHora >= 0) {
+    const rangoHora = target.sheet.getRange(target.fila, colHora + 1);
+    rangoHora.clearDataValidations();
+    rangoHora.setValue(hora);
+    target.row[colHora] = hora;
+  }
+
+  limpiarCacheDatos_(target.hoja === 'Debate' ? 'debate' : 'oralidad');
+  registrarHistorial(
+    'REGISTRAR_INGRESO_FISICO',
+    target.hoja,
+    datos.nro_expediente,
+    'Ingreso fisico registrado: ' + fechaInputAString(fecha) + ' ' + hora
+  );
+
+  if (typeof registrarMovimientoExpediente_ === 'function') {
+    try {
+      registrarMovimientoExpediente_({
+        expediente: datos.nro_expediente,
+        fecha: datos.fecha,
+        hora: hora,
+        tipo: 'Ingreso fisico',
+        ubicacion: 'Recepcion',
+        observacion: datos.observacion || ''
+      });
+    } catch (e) {
+      registrarError_('registrarIngresoFisicoExpediente.movimiento', e, datos);
+    }
+  }
+
+  return {
+    ok: true,
+    msg: 'Ingreso fisico registrado',
+    hoja: target.hoja,
+    item: serializarFilaHoja_(target.hoja, target.headers, target.row)
+  };
+}
+
+function asegurarColumnasIngresoFisico_(sheet, hoja) {
+  const esquema = getEsquemaHoja_(hoja);
+  const headerRow = esquema ? esquema.headerRow : 2;
+  let headers = getHeadersHoja_(sheet, headerRow);
+
+  ['INGRESO EXPTE FISICO', 'HORA INGRESO FISICO'].forEach(function(header) {
+    if (indiceCampoHoja_(headers, hoja, header) < 0) {
+      headers = asegurarColumnaHoja_(sheet, headerRow, header);
+    }
+  });
+
+  return headers;
+}
+
+function normalizarHoraIngresoFisico_(hora) {
+  const m = String(hora || '').trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return '';
+  const h = Math.max(0, Math.min(23, parseInt(m[1], 10)));
+  const min = Math.max(0, Math.min(59, parseInt(m[2], 10)));
+  return (h < 10 ? '0' : '') + h + ':' + (min < 10 ? '0' : '') + min;
+}
+
+function buscarUltimaIntervencionExpediente_(expediente) {
+  const buscado = normalizarTexto(expediente);
+  const candidatos = [];
+
+  ['Oralidad', 'Debate'].forEach(function(hoja) {
+    const sheet = getSheet(hoja);
+    const headers = asegurarColumnasSistemaAudiencias_(hoja, sheet);
+    const esquema = getEsquemaHoja_(hoja);
+    const data = sheet.getDataRange().getValues();
+    const colExpte = esquema && typeof esquema.expteIndex === 'number' ? esquema.expteIndex : 0;
+    const startRow = esquema ? esquema.startRow : 3;
+
+    for (let i = startRow; i < data.length; i++) {
+      const row = data[i];
+      if (normalizarTexto(row[colExpte] || '') !== buscado) continue;
+
+      const item = serializarFilaHoja_(hoja, headers, row);
+      const fechaStr = normalizarFechaComparacion(
+        item['DIA'] || item['FECHA AUDIENCIA'] || item['FECHA LIMITE'] || ''
+      );
+      const fechaMs = fechaStr ? new Date(fechaStr + 'T12:00:00').getTime() : 0;
+
+      candidatos.push({
+        hoja: hoja,
+        sheet: sheet,
+        headers: headers,
+        row: row,
+        fila: i + 1,
+        fechaMs: fechaMs
+      });
+    }
+  });
+
+  candidatos.sort(function(a, b) {
+    return b.fechaMs - a.fechaMs || b.fila - a.fila;
+  });
+
+  return candidatos[0] || null;
+}
+
+function agregarImputadoExpediente(datos) {
+  try {
+    return agregarImputadoExpediente_(datos);
+  } catch (err) {
+    registrarError_('agregarImputadoExpediente', err, datos);
+    throw err;
+  }
+}
+
+function agregarImputadoExpediente_(datos) {
+  requireUsuario_('OPERAR');
+  datos = datos || {};
+
+  if (!datos.nro_expediente) throw new Error('Falta indicar expediente');
+  if (!datos.nombre) throw new Error('Falta nombre del imputado');
+
+  const usuario = getEmailUsuarioActual_() || '';
+  const sheet = asegurarHojaImputadosExpediente_();
+  const row = [
+    Utilities.getUuid(),
+    new Date(),
+    usuario,
+    datos.nro_expediente || '',
+    datos.nombre || '',
+    datos.dni || '',
+    datos.obs || '',
+    true
+  ];
+
+  sheet.appendRow(row);
+  limpiarCacheDatos_('imputados');
+  registrarHistorial(
+    'AGREGAR_IMPUTADO',
+    'ImputadosExpediente',
+    datos.nro_expediente,
+    (datos.nombre || '') + (datos.dni ? ' - DNI ' + datos.dni : '')
+  );
+
+  const headers = getHeadersImputadosExpediente_();
+  return {
+    ok: true,
+    msg: 'Imputado agregado',
+    item: serializarFila(headers, row)
+  };
+}
+
+function asegurarHojaImputadosExpediente_() {
+  const ss = getSS();
+  let sheet = ss.getSheetByName('ImputadosExpediente');
+  const headers = getHeadersImputadosExpediente_();
+
+  if (!sheet) {
+    sheet = ss.insertSheet('ImputadosExpediente');
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    return sheet;
+  }
+
+  const actuales = getHeadersHoja_(sheet, 0);
+  headers.forEach(function(header) {
+    if (buscarIndiceHeader(actuales, header) < 0) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(header);
+      actuales.push(header);
+    }
+  });
+
+  return sheet;
+}
+
+function getHeadersImputadosExpediente_() {
+  return ['ID', 'FECHA', 'USUARIO', 'EXPEDIENTE', 'NOMBRE', 'DNI', 'OBS', 'ACTIVO'];
+}
+
+function agregarBloqueoParticipante(datos) {
+  try {
+    return agregarBloqueoParticipante_(datos);
+  } catch (err) {
+    registrarError_('agregarBloqueoParticipante', err, datos);
+    throw err;
+  }
+}
+
+function agregarBloqueoParticipante_(datos) {
+  requireUsuario_('GESTIONAR_PARTICIPANTES');
+
+  if (!datos || !datos.nombre) throw new Error('Falta indicar participante');
+  if (!datos.inicio) throw new Error('Falta fecha de inicio');
+  if (!datos.duracion_dias) throw new Error('Falta duración');
+
+  const sheet = getSheet('Participantes');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const colNombre = buscarIndiceHeader(headers, 'NOMBRE');
+  const colMotivo = buscarIndiceHeader(headers, 'MOTIVO AUSENCIA');
+  const colInicio = buscarIndiceHeader(headers, 'INICIO AUSENCIA');
+  const colFin = buscarIndiceHeader(headers, 'FIN AUSENCIA');
+
+  if (colNombre < 0) throw new Error('No se encontró la columna NOMBRE');
+
+  const inicio = new Date(datos.inicio + 'T12:00:00');
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + parseInt(datos.duracion_dias, 10) - 1);
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colNombre] || '').trim() !== String(datos.nombre || '').trim()) continue;
+
+    if (colMotivo >= 0) sheet.getRange(i + 1, colMotivo + 1).setValue(datos.motivo || '');
+    if (colInicio >= 0) sheet.getRange(i + 1, colInicio + 1).setValue(inicio);
+    if (colFin >= 0) sheet.getRange(i + 1, colFin + 1).setValue(fin);
+    limpiarCacheDatos_('participantes');
+
+    registrarHistorial(
+      'BLOQUEAR_PERSONA',
+      'Participantes',
+      datos.nombre,
+      'Bloqueo: ' + (datos.motivo || '') + ' desde ' + fechaInputAString(inicio) + ' hasta ' + fechaInputAString(fin)
+    );
+
+    return {
+      ok: true,
+      msg: 'Realizado',
+      fin: Utilities.formatDate(fin, Session.getScriptTimeZone(), 'dd/MM/yyyy')
+    };
+  }
+
+  return { ok: false, msg: 'Participante no encontrado' };
+}
+
+function limpiarBloqueoParticipante(datos) {
+  try {
+    return limpiarBloqueoParticipante_(datos);
+  } catch (err) {
+    registrarError_('limpiarBloqueoParticipante', err, datos);
+    throw err;
+  }
+}
+
+function limpiarBloqueoParticipante_(datos) {
+  requireUsuario_('GESTIONAR_PARTICIPANTES');
+
+  if (!datos || !datos.nombre) throw new Error('Falta indicar participante');
+
+  const sheet = getSheet('Participantes');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const colNombre = buscarIndiceHeader(headers, 'NOMBRE');
+  const colMotivo = buscarIndiceHeader(headers, 'MOTIVO AUSENCIA');
+  const colInicio = buscarIndiceHeader(headers, 'INICIO AUSENCIA');
+  const colFin = buscarIndiceHeader(headers, 'FIN AUSENCIA');
+
+  if (colNombre < 0) throw new Error('No se encontró la columna NOMBRE');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][colNombre] || '').trim() !== String(datos.nombre || '').trim()) continue;
+
+    if (colMotivo >= 0) sheet.getRange(i + 1, colMotivo + 1).clearContent();
+    if (colInicio >= 0) sheet.getRange(i + 1, colInicio + 1).clearContent();
+    if (colFin >= 0) sheet.getRange(i + 1, colFin + 1).clearContent();
+    limpiarCacheDatos_('participantes');
+
+    registrarHistorial(
+      'BORRAR_BLOQUEO_PERSONA',
+      'Participantes',
+      datos.nombre,
+      'Bloqueo eliminado'
+    );
+
+    return { ok: true, msg: 'Realizado' };
+  }
+
+  return { ok: false, msg: 'Participante no encontrado' };
+}
+
+function agregarFeriado(datos) {
+  try {
+    return agregarFeriado_(datos);
+  } catch (err) {
+    registrarError_('agregarFeriado', err, datos);
+    throw err;
+  }
+}
+
+function agregarFeriado_(datos) {
+  requireUsuario_('GESTIONAR_CONFIG');
+
+  if (!datos || !datos.fecha) throw new Error('Falta fecha');
+  limpiarCacheDatos_('config');
+
+  const sheet = getSheet('DiasBloqueados');
+  const data = sheet.getDataRange().getValues();
+  const fechaNorm = normalizarFechaComparacion(datos.fecha);
+
+  for (let i = 1; i < data.length; i++) {
+    if (normalizarFechaComparacion(data[i][0]) === fechaNorm) {
+      sheet.getRange(i + 1, 3).setValue(true);
+      limpiarCacheDatos_('config');
+      return { ok: true, msg: 'Realizado' };
+    }
+  }
+
+  sheet.appendRow([
+    fechaInputAFechaSheet(datos.fecha),
+    datos.motivo || 'Día bloqueado',
+    true,
+    Session.getActiveUser().getEmail() || '',
+    new Date()
+  ]);
+
+  registrarHistorial(
+    'AGREGAR_DIA_BLOQUEADO',
+    'DiasBloqueados',
+    fechaInputAString(datos.fecha),
+    datos.motivo || 'Día bloqueado'
+  );
+
+  return { ok: true, msg: 'Realizado' };
+}
+
+function eliminarFeriado(datos) {
+  try {
+    return eliminarFeriado_(datos);
+  } catch (err) {
+    registrarError_('eliminarFeriado', err, datos);
+    throw err;
+  }
+}
+
+function eliminarFeriado_(datos) {
+  requireUsuario_('GESTIONAR_CONFIG');
+
+  if (!datos || !datos.fecha) throw new Error('Falta fecha');
+  limpiarCacheDatos_('config');
+
+  const sheet = getSheet('DiasBloqueados');
+  const data = sheet.getDataRange().getValues();
+  const fechaNorm = normalizarFechaComparacion(datos.fecha);
+
+  for (let i = 1; i < data.length; i++) {
+    if (normalizarFechaComparacion(data[i][0]) === fechaNorm) {
+      sheet.getRange(i + 1, 3).setValue(false);
+      limpiarCacheDatos_('config');
+
+      registrarHistorial(
+        'DESACTIVAR_DIA_BLOQUEADO',
+        'DiasBloqueados',
+        fechaInputAString(datos.fecha),
+        'Día bloqueado desactivado'
+      );
+
+      return { ok: true, msg: 'Realizado' };
+    }
+  }
+
+  return { ok: false, msg: 'Día no encontrado' };
+}
+
+function escribirFilaSegura_(sheet, filaLibre, fila, nombreHoja, headers) {
+  const escritas = [];
+
+  try {
+    for (let c = 0; c < fila.length; c++) {
+      let val = fila[c];
+      if (val === '' || val === null || typeof val === 'undefined') continue;
+
+      const campo = campoPorIndiceHoja_(nombreHoja, headers, c);
+      const rango = sheet.getRange(filaLibre, c + 1);
+
+      if (esCampoMultipleLibre_(campo, val)) {
+        rango.clearDataValidations();
+        rango.setValue(val);
+      } else {
+        val = valorCompatibleConValidacion_(rango, val, campo);
+        if (campoControladoPorBackend_(campo)) {
+          rango.clearDataValidations();
+          rango.setValue(val);
+        } else {
+          rango.setValue(val);
+        }
+      }
+
+      escritas.push(rango);
+    }
+  } catch (err) {
+    escritas.forEach(function(rango) {
+      try { rango.clearContent(); } catch (e) {}
+    });
+    throw err;
+  }
+}
+
+function debeRecalcularFechaLimiteOralidad_(campos) {
+  return [
+    'INGRESO OGA',
+    'INGRESO EXP.',
+    'INGRESO EXPTE FISICO',
+    'TIPO DE AUD.',
+    'TIPO DE AUD',
+    'PRESO'
+  ].some(function(campo) {
+    return Object.prototype.hasOwnProperty.call(campos || {}, campo);
+  });
+}
+
+function calcularFechaLimiteOralidad_(datos) {
+  datos = datos || {};
+
+  const base = fechaPlazoAFecha_(
+    datos.ingreso_expte_fisico ||
+    datos.ingreso_expte ||
+    datos['INGRESO EXPTE FISICO'] ||
+    datos['INGRESO EXP.'] ||
+    datos.ingreso_oga ||
+    datos['INGRESO OGA']
+  );
+
+  if (!base) return '';
+
+  const tipoPlazo = tipoPlazoOralidad_(
+    datos.tipo_aud ||
+    datos['TIPO DE AUD.'] ||
+    datos['TIPO DE AUD']
+  );
+
+  if (!tipoPlazo) return '';
+
+  const dias = diasPlazoOralidad_(tipoPlazo, datos.preso || datos['PRESO']);
+  if (!dias) return '';
+
+  return sumarDiasHabilesPlazo_(base, dias);
+}
+
+function tipoPlazoOralidad_(tipo) {
+  const t = normalizarTexto(tipo);
+
+  if (!t) return '';
+  if (t.indexOf('RPP') >= 0 || t.indexOf('REVISION') >= 0) return 'RPP';
+  if (t.indexOf('ARRESTO DOMICILIARIO') >= 0) return 'RPP';
+  if (t.indexOf('PP') >= 0 || t.indexOf('PRISION PREVENTIVA') >= 0) return 'PP';
+  if (t.indexOf('CA') >= 0 || t.indexOf('CONTROL DE ACUSACION') >= 0) return 'CA';
+  if (t.indexOf('MU') >= 0 || t.indexOf('MEDIDA URGENTE') >= 0) return 'MU';
+
+  return '';
+}
+
+function diasPlazoOralidad_(tipoPlazo, preso) {
+  const config = getConfiguracion();
+  const plazos = config.plazos || [];
+  const conPreso = preso === true || String(preso).toUpperCase() === 'TRUE' || String(preso).trim() === '1';
+
+  for (let i = 0; i < plazos.length; i++) {
+    if (normalizarTexto(plazos[i].tipo) !== normalizarTexto(tipoPlazo)) continue;
+
+    return extraerNumeroPlazo_(conPreso ? plazos[i].conPreso : plazos[i].sinPreso);
+  }
+
+  return 0;
+}
+
+function extraerNumeroPlazo_(valor) {
+  const m = String(valor || '').match(/\d+/);
+  return m ? parseInt(m[0], 10) : 0;
+}
+
+function fechaPlazoAFecha_(valor) {
+  if (!valor) return null;
+
+  if (valor instanceof Date) {
+    return new Date(valor.getFullYear(), valor.getMonth(), valor.getDate(), 12, 0, 0, 0);
+  }
+
+  const s = String(valor).trim();
+  let p;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    p = s.split('-');
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), 12, 0, 0, 0);
+  }
+
+  p = s.split('/');
+  if (p.length === 3) {
+    return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10), 12, 0, 0, 0);
+  }
+
+  return null;
+}
+
+function sumarDiasHabilesPlazo_(base, dias) {
+  const fecha = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
+  let restantes = parseInt(dias, 10) || 0;
+
+  while (restantes > 0) {
+    fecha.setDate(fecha.getDate() + 1);
+    if (esDiaHabil(normalizarFechaComparacion(fecha))) restantes--;
+  }
+
+  return fecha;
+}
+
+function validarExpediente(datos) {
+  if (!datos) throw new Error('No se recibieron datos');
+
+  if (!datos.nro_expediente || String(datos.nro_expediente).trim() === '') {
+    throw new Error('Expediente obligatorio');
+  }
+}
+
+function normalizarTipoAudienciaOralidad_(v) {
+  const s = String(v || '').trim();
+  const n = normalizarTexto(s);
+
+  if ((n.indexOf('RPP') >= 0 || n.indexOf('REVISION') >= 0) && n.indexOf('ARRESTO DOMICILIARIO') >= 0) {
+    return 'REVISION DE PREVENTIVA - ARRESTO DOMICILIARIO';
+  }
+
+  const mapa = {
+    'PP - PRISION PREVENTIVA': 'PRISION PREVENTIVA',
+    'RPP - REVISION DE PREVENTIVA': 'REVISION DE PREVENTIVA',
+    'CA - CONTROL DE ACUSACION': 'CONTROL DE ACUSACION',
+    'MU - MEDIDA URGENTE': 'MEDIDA URGENTE',
+    'ARRESTO DOMICILIARIO': 'ARRESTO DOMICILIARIO',
+    'DEBATE GAR': 'Propias de GAR',
+    'PRELIMINAR JUICIO POR JURADO': 'PRELIMINAR JUICIO POR JURADO',
+    'JUICIO POR JURADO': 'JUICIO POR JURADO'
+  };
+
+  return mapa[s] || s;
+}
+
+function normalizarTipoAudienciaDebate_(v) {
+  const s = String(v || '').trim();
+  return s || 'DEBATE';
+}
